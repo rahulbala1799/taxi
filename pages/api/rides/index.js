@@ -1,44 +1,87 @@
 import prisma from '../../../lib/prisma'
 
 export default async function handler(req, res) {
-  if (req.method === 'GET') {
-    try {
-      // Return mock rides
-      const mockRides = []
-      
-      return res.status(200).json(mockRides)
-    } catch (error) {
-      console.error('Request error', error)
-      res.status(500).json({ error: 'Error fetching rides', details: error.message })
-    }
-  } else if (req.method === 'POST') {
-    try {
-      const { pickupLocation, dropoffLocation, pickupTime, userId, fare, distance, duration } = req.body
-      
-      // Return a mock response
-      const mockRide = {
-        id: 'ride-' + Date.now(),
-        pickupLocation,
-        dropoffLocation,
-        date: new Date().toISOString(),
-        distance: distance || 0,
-        duration: duration || 0,
-        fare: fare ? parseFloat(fare) : 0,
-        tips: 0,
-        totalEarned: fare ? parseFloat(fare) : 0,
-        vehicleType: 'Tesla',
-        userId: userId || 'mock-user-id',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+  const { method } = req;
+
+  switch (method) {
+    case 'GET':
+      try {
+        const rides = await prisma.ride.findMany({
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+              },
+            },
+          },
+        });
+        res.status(200).json(rides);
+      } catch (error) {
+        console.error('Error fetching rides:', error);
+        res.status(500).json({ error: 'Failed to fetch rides' });
       }
-      
-      return res.status(201).json(mockRide)
-    } catch (error) {
-      console.error('Request error', error)
-      res.status(500).json({ error: 'Error creating ride', details: error.message })
-    }
-  } else {
-    res.setHeader('Allow', ['GET', 'POST'])
-    res.status(405).end(`Method ${req.method} Not Allowed`)
+      break;
+
+    case 'POST':
+      try {
+        const { 
+          pickupLocation, 
+          dropoffLocation, 
+          distance, 
+          duration, 
+          fare, 
+          tips = 0, 
+          vehicleType = "Tesla", 
+          notes,
+          userId 
+        } = req.body;
+
+        // Validate required fields
+        if (!pickupLocation || !dropoffLocation || !distance || !duration || !fare || !userId) {
+          return res.status(400).json({ error: 'Missing required ride details' });
+        }
+
+        // Calculate total earned
+        const totalEarned = parseFloat(fare) + parseFloat(tips);
+
+        // Create ride in database
+        const newRide = await prisma.ride.create({
+          data: {
+            pickupLocation,
+            dropoffLocation,
+            distance: parseFloat(distance),
+            duration: parseInt(duration),
+            fare: parseFloat(fare),
+            tips: parseFloat(tips),
+            totalEarned,
+            vehicleType,
+            notes,
+            userId,
+          },
+        });
+
+        // Update user's total earnings
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            totalEarnings: {
+              increment: totalEarned
+            }
+          }
+        });
+
+        res.status(201).json(newRide);
+      } catch (error) {
+        console.error('Error creating ride:', error);
+        res.status(500).json({ error: 'Failed to create ride' });
+      }
+      break;
+
+    default:
+      res.setHeader('Allow', ['GET', 'POST']);
+      res.status(405).end(`Method ${method} Not Allowed`);
   }
 } 
