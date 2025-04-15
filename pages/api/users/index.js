@@ -1,20 +1,19 @@
-import prisma from '../../../lib/prisma'
-
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
-      const users = await prisma.user.findMany({
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          phone: true,
-          role: true,
-          createdAt: true
+      // Return mock users
+      const mockUsers = [
+        {
+          id: 'mock-user-1',
+          name: 'Stephen Driver',
+          email: 'stephen@example.com',
+          phone: '555-1234',
+          role: 'DRIVER',
+          createdAt: new Date().toISOString()
         }
-      })
+      ]
       
-      return res.status(200).json(users)
+      return res.status(200).json(mockUsers)
     } catch (error) {
       console.error('Request error', error)
       res.status(500).json({ error: 'Error fetching users', details: error.message })
@@ -23,17 +22,17 @@ export default async function handler(req, res) {
     try {
       const { name, email, password, phone, role } = req.body
       
-      const user = await prisma.user.create({
-        data: {
-          name,
-          email,
-          password, // In a real app, you should hash this password
-          phone,
-          role: role || 'USER'
-        }
-      })
+      // Return a mock response
+      const mockUser = {
+        id: 'new-user-' + Date.now(),
+        name,
+        email,
+        phone,
+        role: role || 'DRIVER',
+        createdAt: new Date().toISOString()
+      }
       
-      return res.status(201).json(user)
+      return res.status(201).json(mockUser)
     } catch (error) {
       console.error('Request error', error)
       res.status(500).json({ error: 'Error creating user', details: error.message })
