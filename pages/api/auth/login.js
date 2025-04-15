@@ -15,13 +15,24 @@ export default async function handler(req, res) {
     const { email, password } = req.body
 
     if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' })
+      return res.status(400).json({ message: 'Username/Email and password are required' })
     }
 
-    // Find user in database
-    const user = await prisma.user.findUnique({
+    // Find user in database by email or username (name field)
+    let user = await prisma.user.findUnique({
       where: { email }
     })
+
+    // If user not found by email, try to find by name (username)
+    if (!user) {
+      const usersByName = await prisma.user.findMany({
+        where: { name: email } // We're using the email field to also accept username input
+      })
+      
+      if (usersByName.length > 0) {
+        user = usersByName[0] // Use the first user if multiple users have the same name
+      }
+    }
 
     // For demo purposes, if no user is found, auto-create one for Stijoi
     if (!user) {

@@ -54,13 +54,13 @@ export default function LoginForm() {
         
         <div className="mb-4">
           <label className="block text-red-700 text-sm font-bold mb-2" htmlFor="email">
-            Email
+            Username or Email
           </label>
           <input
             className="bg-black shadow appearance-none border border-gray-800 rounded w-full py-3 px-4 text-white leading-tight focus:outline-none focus:border-red-700 focus:ring-1 focus:ring-red-700"
             id="email"
-            type="email"
-            placeholder="stijoi@example.com"
+            type="text"
+            placeholder="Stijoimillion or your email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
