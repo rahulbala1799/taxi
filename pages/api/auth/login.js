@@ -18,20 +18,34 @@ export default async function handler(req, res) {
       return res.status(400).json({ message: 'Username/Email and password are required' })
     }
 
-    // Find user in database by email or username (name field)
+    console.log(`Login attempt for: ${email}`)
+
+    // First try: Find user in database by email
     let user = await prisma.user.findUnique({
       where: { email }
     })
 
-    // If user not found by email, try to find by name (username)
+    // Second try: If user not found by email, try to find by name (username) case insensitive
     if (!user) {
+      console.log(`User not found by email, trying by name: ${email}`)
+      // Using a more flexible search for name to accommodate case sensitivity issues
       const usersByName = await prisma.user.findMany({
-        where: { name: email } // We're using the email field to also accept username input
+        where: {
+          name: {
+            mode: 'insensitive',
+            equals: email
+          }
+        }
       })
       
       if (usersByName.length > 0) {
         user = usersByName[0] // Use the first user if multiple users have the same name
+        console.log(`Found user by name: ${user.name} (${user.id})`)
+      } else {
+        console.log(`No user found by name: ${email}`)
       }
+    } else {
+      console.log(`Found user by email: ${user.email} (${user.id})`)
     }
 
     // For demo purposes, if no user is found, auto-create one for Stijoi
@@ -64,23 +78,29 @@ export default async function handler(req, res) {
           }
         })
       } else {
-        return res.status(401).json({ message: 'Invalid credentials' })
+        return res.status(401).json({ message: 'Invalid credentials - User not found' })
       }
     }
 
     // Verify password
     let passwordIsValid
     try {
+      console.log(`Verifying password for user: ${user.name}`)
       passwordIsValid = await bcrypt.compare(password, user.password)
     } catch (error) {
+      console.error('Password comparison error:', error)
       // In case the password is not hashed (for testing)
       passwordIsValid = password === user.password
+      console.log(`Fallback plain text password check: ${passwordIsValid}`)
     }
 
     if (!passwordIsValid) {
-      return res.status(401).json({ message: 'Invalid credentials' })
+      console.log(`Password validation failed for user: ${user.name}`)
+      return res.status(401).json({ message: 'Invalid credentials - Password incorrect' })
     }
 
+    console.log(`Login successful for user: ${user.name}`)
+    
     // Create JWT token
     const token = jwt.sign(
       { userId: user.id, email: user.email, role: user.role },

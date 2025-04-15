@@ -1,83 +1,126 @@
 import prisma from '../../../lib/prisma'
 
 export default async function handler(req, res) {
+  // Only allow GET method
+  if (req.method !== 'GET') {
+    return res.status(405).json({ message: 'Method not allowed' })
+  }
+
   try {
-    // Get prisma client version and connection status
-    const info = {
-      clientVersion: prisma._clientVersion,
-      connectionEstablished: true
-    };
-
-    // Test introspection of the schema
-    try {
-      const vehicleInfo = {
-        exists: false,
-        fields: []
-      };
-
-      // Check if Vehicle model is accessible
-      if (prisma.vehicle) {
-        vehicleInfo.exists = true;
-        
-        // Try to get model fields
-        if (prisma._baseDmmf && prisma._baseDmmf.modelMap && prisma._baseDmmf.modelMap.Vehicle) {
-          vehicleInfo.fields = Object.keys(prisma._baseDmmf.modelMap.Vehicle.fields);
-        }
-      }
-      
-      info.vehicleModel = vehicleInfo;
-    } catch (schemaError) {
-      info.schemaError = {
-        message: schemaError.message,
-        stack: schemaError.stack
-      };
-    }
-
-    // Check database connectivity with simple query
-    try {
-      await prisma.$queryRaw`SELECT 1 AS "connectionTest"`;
-      info.databaseConnected = true;
-    } catch (dbError) {
-      info.databaseConnected = false;
-      info.databaseError = {
-        message: dbError.message,
-        stack: dbError.stack
-      };
-    }
-
-    // Try a minimal vehicle creation with only required fields
-    const testData = {
-      make: 'Test',
-      model: 'Model',
-      year: 2023,
-      licensePlate: `TEST-${Date.now()}`,
-      driverId: 'test-driver-id' // This will fail but shows where the error occurs
-    };
+    // Test database connection
+    let clientVersion = ""
+    let connectionEstablished = false
     
     try {
-      info.createTest = { 
-        attempted: true,
-        data: testData
-      };
-      
-      // We expect this to fail but want to see the exact error
-      await prisma.vehicle.create({ data: testData });
-    } catch (createError) {
-      info.createTest.error = {
-        message: createError.message,
-        code: createError.code,
-        meta: createError.meta
-      };
+      clientVersion = prisma._clientVersion
+      await prisma.$queryRaw`SELECT 1`
+      connectionEstablished = true
+    } catch (connErr) {
+      return res.status(500).json({ 
+        clientVersion,
+        connectionEstablished: false,
+        error: connErr.message
+      })
     }
 
-    return res.status(200).json(info);
+    // Check vehicle model
+    const vehicleModel = {
+      exists: true,
+      fields: []
+    }
+
+    try {
+      // Try to get at least one vehicle to verify model exists
+      const vehicles = await prisma.vehicle.findMany({ take: 1 })
+      // Get field names if available
+      if (prisma._baseDmmf && prisma._baseDmmf.modelMap.Vehicle) {
+        vehicleModel.fields = Object.keys(prisma._baseDmmf.modelMap.Vehicle.fields)
+      }
+    } catch (modelErr) {
+      vehicleModel.exists = false
+      vehicleModel.error = modelErr.message
+    }
+
+    // Try to find a valid user to use for the test
+    let testUserId = null
+    try {
+      // First try to find the Stijoimillion user
+      const stijoi = await prisma.user.findFirst({
+        where: { name: { equals: 'Stijoimillion', mode: 'insensitive' } },
+        select: { id: true }
+      })
+      
+      if (stijoi) {
+        testUserId = stijoi.id
+      } else {
+        // Fallback to any user in the database
+        const anyUser = await prisma.user.findFirst({
+          select: { id: true }
+        })
+        
+        if (anyUser) {
+          testUserId = anyUser.id
+        }
+      }
+    } catch (userErr) {
+      // Ignore errors here, we'll use a fallback ID if needed
+    }
+
+    // Create test
+    let createTest = {
+      attempted: true,
+      data: {
+        make: "Test",
+        model: "Model",
+        year: 2023,
+        licensePlate: `TEST-${Date.now()}`,
+        driverId: testUserId || "test-driver-id"
+      },
+      success: false
+    }
+
+    try {
+      if (testUserId) {
+        // Only attempt to create if we found a valid user ID
+        const vehicle = await prisma.vehicle.create({
+          data: createTest.data
+        })
+        
+        createTest.success = true
+        createTest.result = vehicle
+      } else {
+        createTest.error = {
+          message: "Cannot create test vehicle - no valid user ID found in the database",
+          code: "USER_NOT_FOUND"
+        }
+      }
+    } catch (createErr) {
+      createTest.error = {
+        message: createErr.message,
+        code: createErr.code,
+        meta: createErr.meta
+      }
+    }
+
+    return res.status(200).json({
+      clientVersion,
+      connectionEstablished,
+      vehicleModel,
+      databaseConnected: true,
+      createTest
+    })
   } catch (error) {
+    console.error('Test endpoint error:', error)
+    
     return res.status(500).json({
-      message: 'Test endpoint failed',
+      databaseConnected: false,
       error: {
         message: error.message,
+        code: error.code,
+        meta: error.meta || {},
+        name: error.name,
         stack: error.stack
       }
-    });
+    })
   }
 } 

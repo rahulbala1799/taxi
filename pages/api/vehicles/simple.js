@@ -10,11 +10,48 @@ export default async function handler(req, res) {
     const { registrationNumber, userId } = req.body
 
     // Basic validation
-    if (!registrationNumber || !userId) {
+    if (!registrationNumber) {
       return res.status(400).json({ 
-        message: 'Registration number and user ID are required',
+        message: 'Registration number is required',
         received: { registrationNumber, userId }
       })
+    }
+
+    let driverId = userId
+    
+    // If no user ID was provided or it's invalid, try to find a valid user
+    if (!driverId || driverId === 'test-driver-id') {
+      try {
+        // First try to find the Stijoimillion user
+        const stijoi = await prisma.user.findFirst({
+          where: { name: { equals: 'Stijoimillion', mode: 'insensitive' } },
+          select: { id: true }
+        })
+        
+        if (stijoi) {
+          driverId = stijoi.id
+          console.log(`Using Stijoimillion user ID: ${driverId}`)
+        } else {
+          // Fallback to any user in the database
+          const anyUser = await prisma.user.findFirst({
+            select: { id: true }
+          })
+          
+          if (anyUser) {
+            driverId = anyUser.id
+            console.log(`Using fallback user ID: ${driverId}`)
+          } else {
+            return res.status(400).json({
+              message: 'No valid user found in the database. Cannot create vehicle.',
+            })
+          }
+        }
+      } catch (userErr) {
+        return res.status(500).json({
+          message: 'Error finding a valid user',
+          error: userErr.message
+        })
+      }
     }
 
     // Create with minimal fields
@@ -24,7 +61,7 @@ export default async function handler(req, res) {
         model: "Model",
         year: 2023,
         licensePlate: registrationNumber,
-        driverId: userId
+        driverId
       }
     })
 
