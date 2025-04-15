@@ -2,5 +2,9 @@
   "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "env": {
+    "DATABASE_URL": "postgres://neondb_owner:npg_JNmvd1io6DEz@ep-bitter-heart-abtv0kpe-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require",
+    "JWT_SECRET": "stijoi-stephen-taxi-demo-secret-key-123456789"
+  }
 } 
