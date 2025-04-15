@@ -49,6 +49,14 @@ async function createVehicle(req, res) {
   }
 
   try {
+    // Logging for debugging
+    console.log('Creating vehicle with:', {
+      name,
+      registrationNumber,
+      fuelType,
+      userId
+    })
+
     // Check if vehicle with this registration already exists
     const existingVehicle = await prisma.vehicle.findFirst({
       where: { licensePlate: registrationNumber }
@@ -58,21 +66,30 @@ async function createVehicle(req, res) {
       return res.status(400).json({ message: 'A vehicle with this registration number already exists' })
     }
 
-    // Create vehicle
-    const vehicle = await prisma.vehicle.create({
-      data: {
-        make: name ? name.split(' ')[0] || 'Unknown' : 'Unknown',  // Extract make from name if possible
-        model: name ? name.split(' ').slice(1).join(' ') || 'Model' : 'Model',  // Extract model from name if possible
-        year: new Date().getFullYear(),  // Default to current year
-        licensePlate: registrationNumber,
-        fuelType: fuelType || 'Electric',
-        driverId: userId
-      }
-    })
+    // Prepare data object, handling fuelType field properly
+    const data = {
+      make: name ? name.split(' ')[0] || 'Unknown' : 'Unknown',
+      model: name ? name.split(' ').slice(1).join(' ') || 'Model' : 'Model',
+      year: new Date().getFullYear(),
+      licensePlate: registrationNumber,
+      driverId: userId
+    }
+    
+    // Only add fuelType if it exists in the schema
+    if (fuelType) {
+      data.fuelType = fuelType
+    }
+
+    // Create vehicle with safer approach
+    const vehicle = await prisma.vehicle.create({ data })
 
     return res.status(201).json(vehicle)
   } catch (error) {
     console.error('Error creating vehicle:', error)
-    return res.status(500).json({ message: 'Error creating vehicle', details: error.message })
+    return res.status(500).json({ 
+      message: 'Error creating vehicle', 
+      details: error.message,
+      stack: error.stack
+    })
   }
 } 
