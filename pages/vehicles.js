@@ -16,7 +16,6 @@ export default function Vehicles() {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
-  const [debugInfo, setDebugInfo] = useState(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -35,9 +34,6 @@ export default function Vehicles() {
       
       // Fetch user's vehicles when component mounts
       fetchVehicles(parsedUser.id)
-      
-      // Run a test to check database connectivity
-      testDatabaseConnection()
     } catch (err) {
       console.error('Error parsing user data', err)
       router.push('/login')
@@ -45,17 +41,6 @@ export default function Vehicles() {
       setLoading(false)
     }
   }, [router])
-
-  const testDatabaseConnection = async () => {
-    try {
-      const res = await fetch('/api/vehicles/test')
-      const data = await res.json()
-      console.log('Database connection test:', data)
-      setDebugInfo(data)
-    } catch (error) {
-      console.error('Error testing database connection:', error)
-    }
-  }
 
   const fetchVehicles = async (userId) => {
     try {
@@ -290,14 +275,6 @@ export default function Vehicles() {
           </div>
         )}
         
-        {/* Debug Information */}
-        {debugInfo && (
-          <div className="bg-gray-100 p-3 mb-6 rounded-lg text-xs overflow-auto">
-            <div className="font-bold mb-2">Database Connection Status:</div>
-            <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
-          </div>
-        )}
-        
         {/* Vehicles List */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6 border border-gray-200">
           <h2 className="text-lg font-bold text-black mb-4">Your Vehicles</h2>
@@ -317,6 +294,8 @@ export default function Vehicles() {
                 <thead>
                   <tr className="border-b border-gray-200">
                     <th className="px-4 py-2 text-left font-medium text-gray-700">Registration</th>
+                    <th className="px-4 py-2 text-left font-medium text-gray-700">Model</th>
+                    <th className="px-4 py-2 text-left font-medium text-gray-700">Fuel Type</th>
                     <th className="px-4 py-2 text-right font-medium text-gray-700">Actions</th>
                   </tr>
                 </thead>
@@ -324,6 +303,8 @@ export default function Vehicles() {
                   {vehicles.map((vehicle) => (
                     <tr key={vehicle.id} className="border-b border-gray-200">
                       <td className="px-4 py-3 font-medium">{vehicle.licensePlate}</td>
+                      <td className="px-4 py-3">{vehicle.model}</td>
+                      <td className="px-4 py-3">{vehicle.fuelType}</td>
                       <td className="px-4 py-3 text-right">
                         <button
                           onClick={() => handleDelete(vehicle.id)}
