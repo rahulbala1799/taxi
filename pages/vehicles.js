@@ -15,6 +15,7 @@ export default function Vehicles() {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [debugInfo, setDebugInfo] = useState(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -33,6 +34,9 @@ export default function Vehicles() {
       
       // Fetch user's vehicles when component mounts
       fetchVehicles(parsedUser.id)
+      
+      // Run a test to check database connectivity
+      testDatabaseConnection()
     } catch (err) {
       console.error('Error parsing user data', err)
       router.push('/login')
@@ -40,6 +44,17 @@ export default function Vehicles() {
       setLoading(false)
     }
   }, [router])
+
+  const testDatabaseConnection = async () => {
+    try {
+      const res = await fetch('/api/vehicles/test')
+      const data = await res.json()
+      console.log('Database connection test:', data)
+      setDebugInfo(data)
+    } catch (error) {
+      console.error('Error testing database connection:', error)
+    }
+  }
 
   const fetchVehicles = async (userId) => {
     try {
@@ -75,13 +90,14 @@ export default function Vehicles() {
         throw new Error('Vehicle registration number is required')
       }
 
-      const res = await fetch('/api/vehicles', {
+      // Try the simplified API first
+      const res = await fetch('/api/vehicles/simple', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...formData,
+          registrationNumber: formData.registrationNumber,
           userId: user.id,
         }),
       })
@@ -89,7 +105,8 @@ export default function Vehicles() {
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.message || 'Something went wrong')
+        console.error('Vehicle creation error response:', data)
+        throw new Error(data.error?.message || data.message || 'Failed to create vehicle')
       }
 
       // Reset form and update vehicles list
@@ -200,21 +217,6 @@ export default function Vehicles() {
             
             <form onSubmit={handleSubmit}>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="name">
-                  Vehicle Name (Optional)
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
-                  placeholder="e.g. Tesla Model Y"
-                />
-              </div>
-              
-              <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="registrationNumber">
                   Registration Number *
                 </label>
@@ -228,24 +230,7 @@ export default function Vehicles() {
                   placeholder="e.g. 123 ABC"
                   required
                 />
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="fuelType">
-                  Fuel Type
-                </label>
-                <select
-                  id="fuelType"
-                  name="fuelType"
-                  value={formData.fuelType}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
-                >
-                  <option value="Electric">Electric</option>
-                  <option value="Petrol">Petrol</option>
-                  <option value="Diesel">Diesel</option>
-                  <option value="Hybrid">Hybrid</option>
-                </select>
+                <p className="text-xs text-gray-500 mt-1">Only registration number is required to add a vehicle</p>
               </div>
               
               <div className="flex justify-end">
@@ -269,6 +254,14 @@ export default function Vehicles() {
           </div>
         )}
         
+        {/* Debug Information */}
+        {debugInfo && (
+          <div className="bg-gray-100 p-3 mb-6 rounded-lg text-xs overflow-auto">
+            <div className="font-bold mb-2">Database Connection Status:</div>
+            <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
+          </div>
+        )}
+        
         {/* Vehicles List */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6 border border-gray-200">
           <h2 className="text-lg font-bold text-black mb-4">Your Vehicles</h2>
@@ -287,27 +280,14 @@ export default function Vehicles() {
               <table className="w-full min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200">
-                    <th className="px-4 py-2 text-left font-medium text-gray-700">Name</th>
                     <th className="px-4 py-2 text-left font-medium text-gray-700">Registration</th>
-                    <th className="px-4 py-2 text-left font-medium text-gray-700">Fuel Type</th>
                     <th className="px-4 py-2 text-right font-medium text-gray-700">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {vehicles.map((vehicle) => (
                     <tr key={vehicle.id} className="border-b border-gray-200">
-                      <td className="px-4 py-3">{vehicle.name || '-'}</td>
-                      <td className="px-4 py-3 font-medium">{vehicle.registrationNumber}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-block px-2 py-1 text-xs rounded-full ${
-                          vehicle.fuelType === 'Electric' ? 'bg-green-100 text-green-800' :
-                          vehicle.fuelType === 'Hybrid' ? 'bg-blue-100 text-blue-800' :
-                          vehicle.fuelType === 'Petrol' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {vehicle.fuelType}
-                        </span>
-                      </td>
+                      <td className="px-4 py-3 font-medium">{vehicle.licensePlate}</td>
                       <td className="px-4 py-3 text-right">
                         <button
                           onClick={() => handleDelete(vehicle.id)}
