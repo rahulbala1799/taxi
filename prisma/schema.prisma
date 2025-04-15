@@ -1,0 +1,70 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String?
+  password      String
+  phone         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  role          String    @default("DRIVER")
+  rides         Ride[]
+  totalEarnings Float     @default(0)
+  goalAmount    Float     @default(1000000)
+}
+
+model Ride {
+  id              String    @id @default(uuid())
+  date            DateTime  @default(now())
+  pickupLocation  String
+  dropoffLocation String
+  distance        Float     // in kilometers
+  duration        Int       // in minutes
+  fare            Float
+  tips            Float     @default(0)
+  totalEarned     Float     // fare + tips
+  vehicleType     String    @default("Tesla")
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+}
+
+model DailyStats {
+  id              String    @id @default(uuid())
+  date            DateTime  @unique
+  ridesCount      Int       @default(0)
+  totalDistance   Float     @default(0)
+  totalDuration   Int       @default(0)
+  totalEarnings   Float     @default(0)
+  averageFare     Float     @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Vehicle {
+  id            String    @id @default(uuid())
+  make          String
+  model         String
+  year          Int
+  licensePlate  String    @unique
+  capacity      Int       @default(4)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  driverId      String
+}
