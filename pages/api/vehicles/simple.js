@@ -7,13 +7,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { registrationNumber, userId } = req.body
+    const { registrationNumber, model, fuelType, userId } = req.body
 
     // Basic validation
     if (!registrationNumber) {
       return res.status(400).json({ 
         message: 'Registration number is required',
-        received: { registrationNumber, userId }
+        received: { registrationNumber, model, fuelType, userId }
       })
     }
 
@@ -54,15 +54,23 @@ export default async function handler(req, res) {
       }
     }
 
-    // Create with minimal fields
+    // Prepare vehicle data
+    const vehicleData = {
+      make: "Unknown",
+      model: model || "Model",
+      year: new Date().getFullYear(),
+      licensePlate: registrationNumber,
+      driverId
+    }
+
+    // Add fuelType if provided
+    if (fuelType) {
+      vehicleData.fuelType = fuelType
+    }
+
+    // Create with provided fields
     const vehicle = await prisma.vehicle.create({
-      data: {
-        make: "Unknown",
-        model: "Model",
-        year: 2023,
-        licensePlate: registrationNumber,
-        driverId
-      }
+      data: vehicleData
     })
 
     return res.status(201).json({

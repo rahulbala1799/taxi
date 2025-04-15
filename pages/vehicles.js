@@ -10,6 +10,7 @@ export default function Vehicles() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
+    model: '',
     registrationNumber: '',
     fuelType: 'Electric',
   })
@@ -98,6 +99,8 @@ export default function Vehicles() {
         },
         body: JSON.stringify({
           registrationNumber: formData.registrationNumber,
+          model: formData.model,
+          fuelType: formData.fuelType,
           userId: user.id,
         }),
       })
@@ -112,6 +115,7 @@ export default function Vehicles() {
       // Reset form and update vehicles list
       setFormData({
         name: '',
+        model: '',
         registrationNumber: '',
         fuelType: 'Electric',
       })
@@ -230,7 +234,39 @@ export default function Vehicles() {
                   placeholder="e.g. 123 ABC"
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">Only registration number is required to add a vehicle</p>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="model">
+                  Model
+                </label>
+                <input
+                  type="text"
+                  id="model"
+                  name="model"
+                  value={formData.model}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
+                  placeholder="e.g. Model 3"
+                />
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="fuelType">
+                  Fuel Type
+                </label>
+                <select
+                  id="fuelType"
+                  name="fuelType"
+                  value={formData.fuelType}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
+                >
+                  <option value="Electric">Electric</option>
+                  <option value="Petrol">Petrol</option>
+                  <option value="Diesel">Diesel</option>
+                  <option value="Hybrid">Hybrid</option>
+                </select>
               </div>
               
               <div className="flex justify-end">
