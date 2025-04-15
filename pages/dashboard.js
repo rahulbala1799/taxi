@@ -139,6 +139,20 @@ export default function Dashboard() {
             </div>
             <h3 className="text-black font-bold text-center">Metrics</h3>
           </div>
+          
+          {/* Section 5: Manage Vehicles */}
+          <div 
+            className="bg-white rounded-lg shadow-md p-4 flex flex-col items-center justify-center border-2 border-red-600 min-h-[120px] transition-transform hover:scale-105 col-span-2"
+            onClick={() => router.push('/vehicles')}
+          >
+            <div className="text-red-600 mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 17l-1.5-1.5M13 17l1.5-1.5M6 12l-1-1M18 12l1-1M12 7v3M15 10h-3" />
+              </svg>
+            </div>
+            <h3 className="text-black font-bold text-center">Manage Vehicles</h3>
+          </div>
         </div>
         
         {/* Quick Stats */}
