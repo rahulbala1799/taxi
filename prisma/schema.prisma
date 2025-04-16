@@ -25,6 +25,10 @@ model User {
   rides         Ride[]
   vehicles      Vehicle[]
   shifts        Shift[]
+  fuelExpenses  FuelExpense[]
+  maintenanceExpenses MaintenanceExpense[]
+  insuranceExpenses InsuranceExpense[]
+  otherExpenses OtherExpense[]
   totalEarnings Float     @default(0)
   goalAmount    Float     @default(1000000)
 }
@@ -64,18 +68,22 @@ model DailyStats {
 }
 
 model Vehicle {
-  id            String    @id @default(uuid())
-  make          String
-  model         String
-  year          Int
-  licensePlate  String    @unique
-  fuelType      String    @default("Electric")
-  capacity      Int       @default(4)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  driverId      String
-  driver        User      @relation(fields: [driverId], references: [id])
-  shifts        Shift[]
+  id                  String                @id @default(uuid())
+  make                String
+  model               String
+  year                Int
+  licensePlate        String                @unique
+  fuelType            String                @default("Electric")
+  capacity            Int                   @default(4)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  driverId            String
+  driver              User                  @relation(fields: [driverId], references: [id])
+  shifts              Shift[]
+  fuelExpenses        FuelExpense[]
+  maintenanceExpenses MaintenanceExpense[]
+  insuranceExpenses   InsuranceExpense[]
+  otherExpenses       OtherExpense[]
 }
 
 model Shift {
@@ -94,4 +102,70 @@ model Shift {
   vehicleId       String
   vehicle         Vehicle    @relation(fields: [vehicleId], references: [id])
   rides           Ride[]
+}
+
+// Expense models
+
+model FuelExpense {
+  id              String    @id @default(uuid())
+  date            DateTime  @default(now())
+  amount          Float     // Cost in EUR
+  fuelType        String    // Petrol, Diesel, Electric, etc.
+  quantity        Float?    // Liters or kWh
+  odometerReading Float?    // Current odometer reading
+  fullTank        Boolean   @default(true)
+  vehicleId       String
+  vehicle         Vehicle   @relation(fields: [vehicleId], references: [id])
+  driverId        String
+  driver          User      @relation(fields: [driverId], references: [id])
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model MaintenanceExpense {
+  id              String    @id @default(uuid())
+  date            DateTime  @default(now())
+  amount          Float     // Cost in EUR
+  serviceType     String    // Type of maintenance service
+  odometerReading Float?    // Current odometer reading
+  vehicleId       String
+  vehicle         Vehicle   @relation(fields: [vehicleId], references: [id])
+  driverId        String
+  driver          User      @relation(fields: [driverId], references: [id])
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model InsuranceExpense {
+  id              String    @id @default(uuid())
+  startDate       DateTime  @default(now())
+  endDate         DateTime
+  amount          Float     // Total cost in EUR
+  monthlyAmount   Float     // Monthly cost in EUR
+  paymentCycle    String    @default("MONTHLY") // MONTHLY, QUARTERLY, ANNUALLY
+  provider        String
+  policyNumber    String?
+  vehicleId       String
+  vehicle         Vehicle   @relation(fields: [vehicleId], references: [id])
+  driverId        String
+  driver          User      @relation(fields: [driverId], references: [id])
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model OtherExpense {
+  id              String    @id @default(uuid())
+  date            DateTime  @default(now())
+  amount          Float     // Cost in EUR
+  category        String    // Custom category
+  vehicleId       String?
+  vehicle         Vehicle?  @relation(fields: [vehicleId], references: [id])
+  driverId        String
+  driver          User      @relation(fields: [driverId], references: [id])
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
