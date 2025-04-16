@@ -11,7 +11,10 @@ export default async function handler(req, res) {
   try {
     const { driverId, period = 'day' } = req.query;
 
+    console.log('[Metrics API] Request received:', { driverId, period });
+
     if (!driverId) {
+      console.log('[Metrics API] No driver ID provided');
       return res.status(400).json({ error: 'Driver ID is required' });
     }
 
@@ -49,100 +52,212 @@ export default async function handler(req, res) {
         endDate.setHours(23, 59, 59, 999);
         break;
       default:
+        console.log('[Metrics API] Invalid period provided:', period);
         return res.status(400).json({ error: 'Invalid period' });
     }
 
+    console.log('[Metrics API] Date range:', { startDate, endDate });
+
     // Get all completed rides within the date range
-    const rides = await prisma.ride.findMany({
-      where: {
-        driverId,
-        status: 'COMPLETED',
-        endTime: {
-          gte: startDate,
-          lte: endDate,
+    try {
+      console.log('[Metrics API] Querying rides...');
+      const rides = await prisma.ride.findMany({
+        where: {
+          driverId,
+          status: 'COMPLETED',
+          endTime: {
+            gte: startDate,
+            lte: endDate,
+          },
         },
-      },
-      include: {
-        vehicle: true,
-      },
-    });
+        include: {
+          vehicle: true,
+        },
+      });
+      console.log(`[Metrics API] Found ${rides.length} rides`);
+    } catch (error) {
+      console.error('[Metrics API] Error querying rides:', error);
+      // Continue execution but log the error
+    }
 
     // Get all shifts within the date range
-    const shifts = await prisma.shift.findMany({
-      where: {
-        driverId,
-        endTime: {
-          not: null,
-          gte: startDate,
-          lte: endDate,
+    try {
+      console.log('[Metrics API] Querying shifts...');
+      const shifts = await prisma.shift.findMany({
+        where: {
+          driverId,
+          endTime: {
+            not: null,
+            gte: startDate,
+            lte: endDate,
+          },
         },
-      },
-      include: {
-        vehicle: true,
-      },
-    });
+        include: {
+          vehicle: true,
+        },
+      });
+      console.log(`[Metrics API] Found ${shifts.length} shifts`);
+    } catch (error) {
+      console.error('[Metrics API] Error querying shifts:', error);
+      // Continue execution but log the error
+    }
+
+    // Define default empty arrays for data
+    let rides = [];
+    let shifts = [];
+    let fuelExpenses = [];
+    let maintenanceExpenses = [];
+    let insuranceExpenses = [];
+
+    // Get all completed rides within the date range
+    try {
+      rides = await prisma.ride.findMany({
+        where: {
+          driverId,
+          status: 'COMPLETED',
+          endTime: {
+            gte: startDate,
+            lte: endDate,
+          },
+        },
+        include: {
+          vehicle: true,
+        },
+      });
+      console.log(`[Metrics API] Found ${rides.length} rides`);
+    } catch (error) {
+      console.error('[Metrics API] Error querying rides:', error);
+    }
+
+    // Get all shifts within the date range
+    try {
+      shifts = await prisma.shift.findMany({
+        where: {
+          driverId,
+          endTime: {
+            not: null,
+            gte: startDate,
+            lte: endDate,
+          },
+        },
+        include: {
+          vehicle: true,
+        },
+      });
+      console.log(`[Metrics API] Found ${shifts.length} shifts`);
+    } catch (error) {
+      console.error('[Metrics API] Error querying shifts:', error);
+    }
 
     // Get all fuel expenses within the date range
-    const fuelExpenses = await prisma.fuelExpense.findMany({
-      where: {
-        driverId,
-        date: {
-          gte: startDate,
-          lte: endDate,
+    try {
+      console.log('[Metrics API] Querying fuel expenses...');
+      fuelExpenses = await prisma.fuelExpense.findMany({
+        where: {
+          driverId,
+          date: {
+            gte: startDate,
+            lte: endDate,
+          },
         },
-      },
-    });
+      });
+      console.log(`[Metrics API] Found ${fuelExpenses.length} fuel expenses`);
+    } catch (error) {
+      console.error('[Metrics API] Error querying fuel expenses:', error);
+    }
 
     // Get all maintenance expenses within the date range
-    const maintenanceExpenses = await prisma.maintenanceExpense.findMany({
-      where: {
-        driverId,
-        date: {
-          gte: startDate,
-          lte: endDate,
+    try {
+      console.log('[Metrics API] Querying maintenance expenses...');
+      maintenanceExpenses = await prisma.maintenanceExpense.findMany({
+        where: {
+          driverId,
+          date: {
+            gte: startDate,
+            lte: endDate,
+          },
         },
-      },
-    });
+      });
+      console.log(`[Metrics API] Found ${maintenanceExpenses.length} maintenance expenses`);
+    } catch (error) {
+      console.error('[Metrics API] Error querying maintenance expenses:', error);
+    }
 
     // Get all insurance expenses within the date range
-    const insuranceExpenses = await prisma.insuranceExpense.findMany({
-      where: {
-        driverId,
-        date: {
-          gte: startDate,
-          lte: endDate,
+    try {
+      console.log('[Metrics API] Querying insurance expenses...');
+      insuranceExpenses = await prisma.insuranceExpense.findMany({
+        where: {
+          driverId,
+          date: {
+            gte: startDate,
+            lte: endDate,
+          },
         },
-      },
-    });
+      });
+      console.log(`[Metrics API] Found ${insuranceExpenses.length} insurance expenses`);
+    } catch (error) {
+      console.error('[Metrics API] Error querying insurance expenses:', error);
+    }
 
-    // Calculate metrics
-    const totalEarnings = rides.reduce((sum, ride) => sum + (parseFloat(ride.fare) + parseFloat(ride.tips || 0)), 0);
+    // Calculate metrics with safe operations
+    const totalEarnings = rides.reduce((sum, ride) => {
+      const fare = parseFloat(ride.fare || 0);
+      const tips = parseFloat(ride.tips || 0);
+      return sum + (isNaN(fare) ? 0 : fare) + (isNaN(tips) ? 0 : tips);
+    }, 0);
+    
     const totalHours = shifts.reduce((sum, shift) => {
       if (shift.startTime && shift.endTime) {
         const hours = (new Date(shift.endTime) - new Date(shift.startTime)) / (1000 * 60 * 60);
-        return sum + hours;
+        return sum + (isNaN(hours) ? 0 : hours);
       }
       return sum;
     }, 0);
     
-    const totalFuelExpenses = fuelExpenses.reduce((sum, expense) => sum + parseFloat(expense.amount), 0);
-    const totalMaintenanceExpenses = maintenanceExpenses.reduce((sum, expense) => sum + parseFloat(expense.amount), 0);
-    const totalInsuranceExpenses = insuranceExpenses.reduce((sum, expense) => sum + parseFloat(expense.amount), 0);
+    const totalFuelExpenses = fuelExpenses.reduce((sum, expense) => {
+      const amount = parseFloat(expense.amount || 0);
+      return sum + (isNaN(amount) ? 0 : amount);
+    }, 0);
+    
+    const totalMaintenanceExpenses = maintenanceExpenses.reduce((sum, expense) => {
+      const amount = parseFloat(expense.amount || 0);
+      return sum + (isNaN(amount) ? 0 : amount);
+    }, 0);
+    
+    const totalInsuranceExpenses = insuranceExpenses.reduce((sum, expense) => {
+      const amount = parseFloat(expense.amount || 0);
+      return sum + (isNaN(amount) ? 0 : amount);
+    }, 0);
+    
     const totalExpenses = totalFuelExpenses + totalMaintenanceExpenses + totalInsuranceExpenses;
     
-    const totalTips = rides.reduce((sum, ride) => sum + parseFloat(ride.tips || 0), 0);
-    const totalFares = rides.reduce((sum, ride) => sum + parseFloat(ride.fare), 0);
+    const totalTips = rides.reduce((sum, ride) => {
+      const tips = parseFloat(ride.tips || 0);
+      return sum + (isNaN(tips) ? 0 : tips);
+    }, 0);
+    
+    const totalFares = rides.reduce((sum, ride) => {
+      const fare = parseFloat(ride.fare || 0);
+      return sum + (isNaN(fare) ? 0 : fare);
+    }, 0);
+    
     const tipsPercentage = totalFares > 0 ? (totalTips / totalFares) * 100 : 0;
     
-    const totalDistance = rides.reduce((sum, ride) => sum + parseFloat(ride.distance || 0), 0);
+    const totalDistance = rides.reduce((sum, ride) => {
+      const distance = parseFloat(ride.distance || 0);
+      return sum + (isNaN(distance) ? 0 : distance);
+    }, 0);
     
     // Group rides by shift to calculate rides per shift
     const ridesByShift = rides.reduce((acc, ride) => {
-      const shiftDate = new Date(ride.startTime).toDateString();
-      if (!acc[shiftDate]) {
-        acc[shiftDate] = [];
+      if (ride.startTime) {
+        const shiftDate = new Date(ride.startTime).toDateString();
+        if (!acc[shiftDate]) {
+          acc[shiftDate] = [];
+        }
+        acc[shiftDate].push(ride);
       }
-      acc[shiftDate].push(ride);
       return acc;
     }, {});
     
@@ -152,7 +267,10 @@ export default async function handler(req, res) {
     // Calculate fuel efficiency
     let fuelEfficiency = 0;
     if (totalDistance > 0 && totalFuelExpenses > 0) {
-      const totalFuel = fuelExpenses.reduce((sum, expense) => sum + parseFloat(expense.quantity || 0), 0);
+      const totalFuel = fuelExpenses.reduce((sum, expense) => {
+        const quantity = parseFloat(expense.quantity || 0);
+        return sum + (isNaN(quantity) ? 0 : quantity);
+      }, 0);
       fuelEfficiency = totalFuel > 0 ? totalDistance / totalFuel : 0;
     }
 
@@ -177,9 +295,14 @@ export default async function handler(req, res) {
       },
     };
 
+    console.log('[Metrics API] Calculated metrics:', metrics);
     return res.status(200).json(metrics);
   } catch (error) {
-    console.error('Error fetching metrics:', error);
-    return res.status(500).json({ error: 'Failed to fetch metrics', details: error.message });
+    console.error('[Metrics API] Error fetching metrics:', error);
+    return res.status(500).json({ 
+      error: 'Failed to fetch metrics', 
+      details: error.message,
+      stack: error.stack 
+    });
   }
 } 
