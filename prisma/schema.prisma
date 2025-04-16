@@ -41,6 +41,8 @@ model Ride {
   totalEarned     Float     // fare + tips
   vehicleType     String    @default("Tesla")
   notes           String?
+  rideSource      String    @default("WALK_IN") // WALK_IN, UBER, BOLT, FREE_NOW, HOLA_TAXI
+  tollAmount      Float     @default(0)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   userId          String

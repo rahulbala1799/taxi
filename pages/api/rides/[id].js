@@ -18,6 +18,22 @@ export default async function handler(req, res) {
                 role: true,
               },
             },
+            shift: {
+              select: {
+                id: true,
+                date: true,
+                startTime: true,
+                endTime: true,
+                status: true,
+                vehicle: {
+                  select: {
+                    make: true,
+                    model: true,
+                    licensePlate: true
+                  }
+                }
+              }
+            }
           },
         });
 
@@ -41,38 +57,54 @@ export default async function handler(req, res) {
           fare, 
           tips, 
           vehicleType,
-          notes
+          notes,
+          rideSource,
+          tollAmount,
+          shiftId
         } = req.body;
 
-        // Calculate total earned if fare or tips were updated
+        // Calculate total earned if fare, tips, or toll were updated
         let updateData = {};
         
         if (pickupLocation) updateData.pickupLocation = pickupLocation;
         if (dropoffLocation) updateData.dropoffLocation = dropoffLocation;
         if (distance) updateData.distance = parseFloat(distance);
         if (duration) updateData.duration = parseInt(duration);
+        if (vehicleType) updateData.vehicleType = vehicleType;
+        if (notes !== undefined) updateData.notes = notes;
+        if (rideSource) updateData.rideSource = rideSource;
         
-        if (fare !== undefined || tips !== undefined) {
-          // Get current ride data to calculate earnings difference
-          const currentRide = await prisma.ride.findUnique({
-            where: { id },
-            select: { fare: true, tips: true, userId: true }
-          });
-          
-          if (!currentRide) {
-            return res.status(404).json({ error: 'Ride not found' });
+        // Get current ride data to calculate earnings difference
+        const currentRide = await prisma.ride.findUnique({
+          where: { id },
+          select: { 
+            fare: true, 
+            tips: true, 
+            tollAmount: true,
+            userId: true,
+            shiftId: true
           }
+        });
+        
+        if (!currentRide) {
+          return res.status(404).json({ error: 'Ride not found' });
+        }
 
-          const newFare = fare !== undefined ? parseFloat(fare) : currentRide.fare;
-          const newTips = tips !== undefined ? parseFloat(tips) : currentRide.tips;
-          
-          updateData.fare = newFare;
-          updateData.tips = newTips;
-          updateData.totalEarned = newFare + newTips;
+        const newFare = fare !== undefined ? parseFloat(fare) : currentRide.fare;
+        const newTips = tips !== undefined ? parseFloat(tips) : currentRide.tips;
+        const newTollAmount = tollAmount !== undefined ? parseFloat(tollAmount) : currentRide.tollAmount;
+        
+        if (fare !== undefined) updateData.fare = newFare;
+        if (tips !== undefined) updateData.tips = newTips;
+        if (tollAmount !== undefined) updateData.tollAmount = newTollAmount;
+        
+        // If any of the monetary values changed, update the total
+        if (fare !== undefined || tips !== undefined || tollAmount !== undefined) {
+          updateData.totalEarned = newFare + newTips + newTollAmount;
           
           // Calculate difference for user's total earnings update
           const earningsDifference = 
-            (newFare + newTips) - (currentRide.fare + currentRide.tips);
+            (newFare + newTips + newTollAmount) - (currentRide.fare + currentRide.tips + currentRide.tollAmount);
           
           if (earningsDifference !== 0) {
             // Update user's total earnings
@@ -87,12 +119,41 @@ export default async function handler(req, res) {
           }
         }
         
-        if (vehicleType) updateData.vehicleType = vehicleType;
-        if (notes !== undefined) updateData.notes = notes;
+        // If assigning to a shift
+        if (shiftId !== undefined) {
+          // If shiftId is provided and not null, verify that it belongs to this user and exists
+          if (shiftId) {
+            const shift = await prisma.shift.findUnique({
+              where: { id: shiftId },
+              select: { driverId: true }
+            });
+            
+            if (!shift) {
+              return res.status(400).json({ error: 'Invalid shift selected' });
+            }
+            
+            // Make sure the ride belongs to the same driver as the shift
+            if (shift.driverId !== currentRide.userId) {
+              return res.status(400).json({ error: 'Cannot assign ride to a shift belonging to a different driver' });
+            }
+          }
+          
+          updateData.shiftId = shiftId;
+        }
 
         const updatedRide = await prisma.ride.update({
           where: { id },
-          data: updateData
+          data: updateData,
+          include: {
+            shift: {
+              select: {
+                id: true,
+                date: true,
+                startTime: true,
+                status: true
+              }
+            }
+          }
         });
 
         return res.status(200).json(updatedRide);

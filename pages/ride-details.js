@@ -1,10 +1,38 @@
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
+import { format } from 'date-fns'
 
 export default function RideDetails() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [rides, setRides] = useState([])
+  const [shifts, setShifts] = useState([])
+  const [activeShift, setActiveShift] = useState(null)
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [stats, setStats] = useState({
+    totalRides: 0,
+    avgFare: 0,
+    totalDistance: 0,
+    totalEarnings: 0
+  })
+  
+  // Ride form state
+  const [rideForm, setRideForm] = useState({
+    pickupLocation: '',
+    dropoffLocation: '',
+    distance: '',
+    duration: '',
+    fare: '',
+    tips: '',
+    tollAmount: '',
+    rideSource: 'WALK_IN',
+    shiftId: '',
+    notes: ''
+  })
+  
   const router = useRouter()
 
   useEffect(() => {
@@ -20,6 +48,13 @@ export default function RideDetails() {
     try {
       const parsedUser = JSON.parse(userData)
       setUser(parsedUser)
+      
+      // Load data when user is available
+      if (parsedUser && parsedUser.id) {
+        fetchRides(parsedUser.id)
+        fetchShifts(parsedUser.id)
+        checkActiveShift(parsedUser.id)
+      }
     } catch (err) {
       console.error('Error parsing user data', err)
       router.push('/login')
@@ -27,6 +62,174 @@ export default function RideDetails() {
       setLoading(false)
     }
   }, [router])
+  
+  const fetchRides = async (userId) => {
+    try {
+      const res = await fetch(`/api/rides?userId=${userId}`)
+      const data = await res.json()
+      
+      if (res.ok) {
+        setRides(data)
+        calculateStats(data)
+      } else {
+        console.error('Error fetching rides:', data.error)
+      }
+    } catch (error) {
+      console.error('Error fetching rides:', error)
+    }
+  }
+  
+  const fetchShifts = async (userId) => {
+    try {
+      const res = await fetch(`/api/shifts?driverId=${userId}`)
+      const data = await res.json()
+      
+      if (res.ok) {
+        setShifts(data)
+      } else {
+        console.error('Error fetching shifts:', data.error)
+      }
+    } catch (error) {
+      console.error('Error fetching shifts:', error)
+    }
+  }
+  
+  const checkActiveShift = async (userId) => {
+    try {
+      const res = await fetch(`/api/shifts?driverId=${userId}&status=ACTIVE`)
+      const data = await res.json()
+      
+      if (res.ok && data.length > 0) {
+        setActiveShift(data[0])
+        
+        // If there's an active shift, set it as the default in the form
+        setRideForm(prev => ({
+          ...prev,
+          shiftId: data[0].id
+        }))
+      } else {
+        setActiveShift(null)
+      }
+    } catch (error) {
+      console.error('Error checking active shift:', error)
+    }
+  }
+  
+  const calculateStats = (ridesData) => {
+    if (!ridesData || ridesData.length === 0) {
+      setStats({
+        totalRides: 0,
+        avgFare: 0,
+        totalDistance: 0,
+        totalEarnings: 0
+      })
+      return
+    }
+    
+    // Filter rides for the current week
+    const now = new Date()
+    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay())
+    
+    const thisWeekRides = ridesData.filter(ride => {
+      const rideDate = new Date(ride.date)
+      return rideDate >= startOfWeek
+    })
+    
+    const totalRides = thisWeekRides.length
+    const totalEarnings = thisWeekRides.reduce((sum, ride) => sum + ride.totalEarned, 0)
+    const totalDistance = thisWeekRides.reduce((sum, ride) => sum + ride.distance, 0)
+    const avgFare = totalRides > 0 ? totalEarnings / totalRides : 0
+    
+    setStats({
+      totalRides,
+      avgFare,
+      totalDistance,
+      totalEarnings
+    })
+  }
+  
+  const handleRideChange = (e) => {
+    const { name, value } = e.target
+    setRideForm(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+  
+  const handleAddRide = async (e) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    setError('')
+    
+    try {
+      if (!rideForm.pickupLocation || !rideForm.dropoffLocation || !rideForm.distance || !rideForm.fare) {
+        throw new Error('Please fill in all required fields')
+      }
+      
+      const res = await fetch('/api/rides', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...rideForm,
+          userId: user.id
+        }),
+      })
+      
+      const data = await res.json()
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to add ride')
+      }
+      
+      // Reset form and refresh rides
+      setRideForm({
+        pickupLocation: '',
+        dropoffLocation: '',
+        distance: '',
+        duration: '',
+        fare: '',
+        tips: '',
+        tollAmount: '',
+        rideSource: 'WALK_IN',
+        shiftId: activeShift ? activeShift.id : '',
+        notes: ''
+      })
+      
+      setShowAddForm(false)
+      fetchRides(user.id)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+  
+  const formatDate = (dateString) => {
+    if (!dateString) return '-'
+    
+    const date = new Date(dateString)
+    return format(date, 'MMM d, yyyy')
+  }
+  
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IE', {
+      style: 'currency',
+      currency: 'EUR'
+    }).format(amount)
+  }
+  
+  const getRideSourceLabel = (source) => {
+    switch (source) {
+      case 'WALK_IN': return 'Walk-In';
+      case 'UBER': return 'Uber';
+      case 'BOLT': return 'Bolt';
+      case 'FREE_NOW': return 'FreeNow';
+      case 'HOLA_TAXI': return 'Hola Taxi';
+      default: return source;
+    }
+  }
 
   if (loading) {
     return (
@@ -62,9 +265,41 @@ export default function RideDetails() {
       </header>
 
       <main className="container mx-auto px-4 py-6">
+        {/* Active Shift Banner */}
+        {activeShift ? (
+          <div className="mb-6 bg-green-100 p-3 rounded-md border border-green-200 flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="bg-green-500 h-2 w-2 rounded-full mr-2"></div>
+              <span className="text-sm font-medium">Active Shift: {activeShift.vehicle?.make} {activeShift.vehicle?.model}</span>
+            </div>
+            <button 
+              onClick={() => router.push('/manage-shift')}
+              className="text-xs bg-black text-white px-2 py-1 rounded"
+            >
+              Manage
+            </button>
+          </div>
+        ) : (
+          <div className="mb-6 bg-yellow-100 p-3 rounded-md border border-yellow-200 flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="bg-yellow-500 h-2 w-2 rounded-full mr-2"></div>
+              <span className="text-sm font-medium">No active shift</span>
+            </div>
+            <button 
+              onClick={() => router.push('/manage-shift')}
+              className="text-xs bg-black text-white px-2 py-1 rounded"
+            >
+              Start Shift
+            </button>
+          </div>
+        )}
+        
         {/* Add New Ride Button */}
         <div className="mb-6">
-          <button className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-md text-sm transition duration-200 flex items-center justify-center">
+          <button 
+            onClick={() => setShowAddForm(true)}
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-md text-sm transition duration-200 flex items-center justify-center"
+          >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
             </svg>
@@ -72,7 +307,210 @@ export default function RideDetails() {
           </button>
         </div>
         
-        {/* Recent Rides Filter */}
+        {/* Add Ride Form */}
+        {showAddForm && (
+          <div className="bg-white rounded-lg shadow-md p-4 mb-6 border border-gray-200">
+            <h2 className="text-lg font-bold text-black mb-4">Add New Ride</h2>
+            
+            {error && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                {error}
+              </div>
+            )}
+            
+            <form onSubmit={handleAddRide}>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="pickupLocation">
+                  Pickup Location*
+                </label>
+                <input
+                  type="text"
+                  id="pickupLocation"
+                  name="pickupLocation"
+                  value={rideForm.pickupLocation}
+                  onChange={handleRideChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
+                  placeholder="e.g. Dublin Airport"
+                  required
+                />
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="dropoffLocation">
+                  Dropoff Location*
+                </label>
+                <input
+                  type="text"
+                  id="dropoffLocation"
+                  name="dropoffLocation"
+                  value={rideForm.dropoffLocation}
+                  onChange={handleRideChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
+                  placeholder="e.g. Dublin City Centre"
+                  required
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="distance">
+                    Distance (km)*
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    id="distance"
+                    name="distance"
+                    value={rideForm.distance}
+                    onChange={handleRideChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="duration">
+                    Duration (min)
+                  </label>
+                  <input
+                    type="number"
+                    id="duration"
+                    name="duration"
+                    value={rideForm.duration}
+                    onChange={handleRideChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="fare">
+                    Fare (€)*
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    id="fare"
+                    name="fare"
+                    value={rideForm.fare}
+                    onChange={handleRideChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="tips">
+                    Tips (€)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    id="tips"
+                    name="tips"
+                    value={rideForm.tips}
+                    onChange={handleRideChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
+                  />
+                </div>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="tollAmount">
+                  Toll Amount (€)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  id="tollAmount"
+                  name="tollAmount"
+                  value={rideForm.tollAmount}
+                  onChange={handleRideChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
+                />
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="rideSource">
+                  Ride Source
+                </label>
+                <select
+                  id="rideSource"
+                  name="rideSource"
+                  value={rideForm.rideSource}
+                  onChange={handleRideChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
+                >
+                  <option value="WALK_IN">Walk-In</option>
+                  <option value="UBER">Uber</option>
+                  <option value="BOLT">Bolt</option>
+                  <option value="FREE_NOW">FreeNow</option>
+                  <option value="HOLA_TAXI">Hola Taxi</option>
+                </select>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="shiftId">
+                  Assign to Shift
+                </label>
+                <select
+                  id="shiftId"
+                  name="shiftId"
+                  value={rideForm.shiftId}
+                  onChange={handleRideChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
+                >
+                  <option value="">-- Not Assigned --</option>
+                  {shifts.map(shift => (
+                    <option key={shift.id} value={shift.id}>
+                      {formatDate(shift.date)} - {shift.vehicle.make} {shift.vehicle.model}
+                      {shift.status === 'ACTIVE' ? ' (Active)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  {!activeShift ? 'You have no active shift. Start a shift or assign this ride later.' : ''}
+                </p>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="notes">
+                  Notes
+                </label>
+                <textarea
+                  id="notes"
+                  name="notes"
+                  value={rideForm.notes}
+                  onChange={handleRideChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
+                  rows="2"
+                ></textarea>
+              </div>
+              
+              <div className="flex justify-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddForm(false)
+                    setError('')
+                  }}
+                  className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium"
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Adding...' : 'Add Ride'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+        
+        {/* Recent Rides */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6 border border-gray-200">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-black">Recent Rides</h2>
@@ -84,13 +522,65 @@ export default function RideDetails() {
             </button>
           </div>
           
-          <div className="text-center py-6 text-gray-500">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-2 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            <p className="mb-1">No rides recorded yet</p>
-            <p className="text-sm">Add your first ride to get started</p>
-          </div>
+          {rides.length === 0 ? (
+            <div className="text-center py-6 text-gray-500">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-2 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              <p className="mb-1">No rides recorded yet</p>
+              <p className="text-sm">Add your first ride to get started</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {rides.map(ride => (
+                <div key={ride.id} className="bg-gray-50 p-3 rounded-md border border-gray-200">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-medium">{formatDate(ride.date)}</span>
+                    <span className="text-sm bg-gray-200 px-2 py-1 rounded-full">
+                      {getRideSourceLabel(ride.rideSource)}
+                    </span>
+                  </div>
+                  
+                  <div className="mb-2">
+                    <div className="flex items-center text-sm">
+                      <div className="bg-green-500 h-2 w-2 rounded-full mr-2"></div>
+                      <span className="text-gray-600 truncate">{ride.pickupLocation}</span>
+                    </div>
+                    <div className="border-l border-gray-300 h-3 ml-1"></div>
+                    <div className="flex items-center text-sm">
+                      <div className="bg-red-500 h-2 w-2 rounded-full mr-2"></div>
+                      <span className="text-gray-600 truncate">{ride.dropoffLocation}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-2 text-sm mb-2">
+                    <div>
+                      <p className="text-xs text-gray-500">Distance</p>
+                      <p>{ride.distance} km</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Fare</p>
+                      <p className="text-red-600 font-medium">{formatCurrency(ride.fare)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Total</p>
+                      <p className="text-red-600 font-medium">{formatCurrency(ride.totalEarned)}</p>
+                    </div>
+                  </div>
+                  
+                  {ride.shift ? (
+                    <div className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded inline-block">
+                      Shift: {formatDate(ride.shift.date)}
+                    </div>
+                  ) : (
+                    <div className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded inline-block">
+                      No Shift Assigned
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         
         {/* Ride Stats */}
@@ -99,19 +589,19 @@ export default function RideDetails() {
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-white p-3 rounded-md">
               <h4 className="text-gray-600 text-xs">Total Rides</h4>
-              <p className="text-xl font-bold text-black">0</p>
+              <p className="text-xl font-bold text-black">{stats.totalRides}</p>
             </div>
             <div className="bg-white p-3 rounded-md">
               <h4 className="text-gray-600 text-xs">Avg. Fare</h4>
-              <p className="text-xl font-bold text-red-600">€0</p>
+              <p className="text-xl font-bold text-red-600">{formatCurrency(stats.avgFare)}</p>
             </div>
             <div className="bg-white p-3 rounded-md">
               <h4 className="text-gray-600 text-xs">Total Distance</h4>
-              <p className="text-xl font-bold text-black">0 km</p>
+              <p className="text-xl font-bold text-black">{stats.totalDistance.toFixed(1)} km</p>
             </div>
             <div className="bg-white p-3 rounded-md">
               <h4 className="text-gray-600 text-xs">Total Earnings</h4>
-              <p className="text-xl font-bold text-red-600">€0</p>
+              <p className="text-xl font-bold text-red-600">{formatCurrency(stats.totalEarnings)}</p>
             </div>
           </div>
         </div>
@@ -129,11 +619,22 @@ export default function RideDetails() {
             </svg>
             <span>Home</span>
           </button>
-          <button className="flex flex-col items-center text-gray-400 text-xs">
+          <button 
+            className="flex flex-col items-center text-gray-400 text-xs"
+            onClick={() => router.push('/manage-shift')}
+          >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span>Shifts</span>
+          </button>
+          <button 
+            className="flex flex-col items-center text-white text-xs"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            <span>Rides</span>
           </button>
           <button 
             className="flex flex-col items-center text-gray-400 text-xs"
@@ -143,12 +644,6 @@ export default function RideDetails() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
             <span>Stats</span>
-          </button>
-          <button className="flex flex-col items-center text-gray-400 text-xs">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-            <span>Profile</span>
           </button>
         </div>
       </nav>
