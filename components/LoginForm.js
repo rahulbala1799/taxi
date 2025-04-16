@@ -16,6 +16,8 @@ export default function LoginForm() {
     setError('')
 
     try {
+      console.log("Attempting login with:", { email })
+      
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -27,16 +29,24 @@ export default function LoginForm() {
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.message || 'Something went wrong')
+        console.error("Login failed:", data)
+        throw new Error(data.message || 'Login failed. Please check your credentials.')
       }
 
-      // Use the login function from auth context
+      console.log("Login successful:", { name: data.user.name, role: data.user.role })
+      
+      // Store manually like before to ensure compatibility
+      localStorage.setItem('token', data.token)
+      localStorage.setItem('user', JSON.stringify(data.user))
+      
+      // Use the context login function as well
       login(data.user, data.token)
 
       // Redirect to dashboard
       router.push('/dashboard')
     } catch (err) {
-      setError(err.message)
+      console.error("Login error:", err)
+      setError(err.message || 'Login failed. Please try again.')
     } finally {
       setLoading(false)
     }
