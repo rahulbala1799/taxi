@@ -22,22 +22,25 @@ export default async function handler(req, res) {
 
 // Get vehicles belonging to a user
 async function getVehicles(req, res) {
-  const { userId } = req.query
+  const { userId, driverId } = req.query
+  const userIdentifier = driverId || userId
 
-  if (!userId) {
-    return res.status(400).json({ message: 'User ID is required' })
+  if (!userIdentifier) {
+    return res.status(400).json({ message: 'User ID is required (use userId or driverId parameter)' })
   }
 
   try {
+    console.log(`Fetching vehicles for user: ${userIdentifier}`)
     const vehicles = await prisma.vehicle.findMany({
       where: { 
-        driverId: userId 
+        driverId: userIdentifier 
       },
       orderBy: {
         createdAt: 'desc'
       }
     })
 
+    console.log(`Found ${vehicles.length} vehicles for user ${userIdentifier}`)
     return res.status(200).json(vehicles)
   } catch (error) {
     console.error('Error fetching vehicles:', error)

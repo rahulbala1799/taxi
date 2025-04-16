@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { format } from 'date-fns'
+import { useAuth } from '../lib/auth'
 
 export default function ManageShift() {
-  const [user, setUser] = useState(null)
+  const { user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [vehicles, setVehicles] = useState([])
   const [activeShift, setActiveShift] = useState(null)
@@ -31,39 +32,28 @@ export default function ManageShift() {
   const router = useRouter()
 
   useEffect(() => {
-    // Check if user is logged in
-    const userData = localStorage.getItem('user')
-    const token = localStorage.getItem('token')
-
-    if (!userData || !token) {
-      router.push('/login')
+    if (!user) {
+      setLoading(true)
       return
     }
-
-    try {
-      const parsedUser = JSON.parse(userData)
-      setUser(parsedUser)
-      
-      // Load data when user is available
-      if (parsedUser && parsedUser.id) {
-        fetchVehicles(parsedUser.id)
-        fetchShifts(parsedUser.id)
-        checkActiveShift(parsedUser.id)
-      }
-    } catch (err) {
-      console.error('Error parsing user data', err)
-      router.push('/login')
-    } finally {
+    
+    // Load data when user is available
+    if (user && user.id) {
+      fetchVehicles(user.id)
+      fetchShifts(user.id)
+      checkActiveShift(user.id)
       setLoading(false)
     }
-  }, [router])
+  }, [user])
   
   const fetchVehicles = async (userId) => {
     try {
-      const res = await fetch(`/api/vehicles?userId=${userId}`)
+      console.log('Fetching vehicles for user:', userId)
+      const res = await fetch(`/api/vehicles?driverId=${userId}`)
       const data = await res.json()
       
       if (res.ok) {
+        console.log('Vehicles fetched:', data)
         setVehicles(data)
         // Set the first vehicle as default if available
         if (data.length > 0) {
@@ -82,10 +72,12 @@ export default function ManageShift() {
   
   const fetchShifts = async (driverId) => {
     try {
+      console.log('Fetching shifts for user:', driverId)
       const res = await fetch(`/api/shifts?driverId=${driverId}`)
       const data = await res.json()
       
       if (res.ok) {
+        console.log('Shifts fetched:', data)
         // Get shifts that are not active (completed or cancelled)
         const completedShifts = data.filter(shift => shift.status !== 'ACTIVE')
         setShifts(completedShifts)
@@ -99,10 +91,12 @@ export default function ManageShift() {
   
   const checkActiveShift = async (driverId) => {
     try {
+      console.log('Checking active shift for user:', driverId)
       const res = await fetch(`/api/shifts?driverId=${driverId}&status=ACTIVE`)
       const data = await res.json()
       
       if (res.ok && data.length > 0) {
+        console.log('Active shift found:', data[0])
         setActiveShift(data[0])
       } else {
         setActiveShift(null)
