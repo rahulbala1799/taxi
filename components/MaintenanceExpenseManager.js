@@ -1,6 +1,26 @@
 import { useState, useEffect } from 'react'
+import { useAuth } from '../lib/auth'
 
-export default function MaintenanceExpenseManager({ user, vehicles, formatDate, formatCurrency }) {
+// Helper functions
+const formatCurrency = (amount) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2
+  }).format(amount)
+}
+
+const formatDate = (dateString) => {
+  if (!dateString) return '-'
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  })
+}
+
+export default function MaintenanceExpenseManager({ vehicles }) {
+  const { user } = useAuth()
   const [maintenanceExpenses, setMaintenanceExpenses] = useState([])
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)

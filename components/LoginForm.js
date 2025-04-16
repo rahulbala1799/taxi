@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/router'
+import { useAuth } from '../lib/auth'
 
 export default function LoginForm() {
   const [email, setEmail] = useState('')
@@ -7,6 +8,7 @@ export default function LoginForm() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const { login } = useAuth()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -28,9 +30,8 @@ export default function LoginForm() {
         throw new Error(data.message || 'Something went wrong')
       }
 
-      // Store token in localStorage
-      localStorage.setItem('token', data.token)
-      localStorage.setItem('user', JSON.stringify(data.user))
+      // Use the login function from auth context
+      login(data.user, data.token)
 
       // Redirect to dashboard
       router.push('/dashboard')
