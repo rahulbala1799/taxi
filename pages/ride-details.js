@@ -21,8 +21,6 @@ export default function RideDetails() {
   
   // Ride form state
   const [rideForm, setRideForm] = useState({
-    pickupLocation: '',
-    dropoffLocation: '',
     distance: '',
     duration: '',
     fare: '',
@@ -162,7 +160,7 @@ export default function RideDetails() {
     setError('')
     
     try {
-      if (!rideForm.pickupLocation || !rideForm.dropoffLocation || !rideForm.distance || !rideForm.fare) {
+      if (!rideForm.distance || !rideForm.fare) {
         throw new Error('Please fill in all required fields')
       }
       
@@ -173,6 +171,8 @@ export default function RideDetails() {
         },
         body: JSON.stringify({
           ...rideForm,
+          pickupLocation: 'Not specified',  // Default value
+          dropoffLocation: 'Not specified', // Default value
           userId: user.id
         }),
       })
@@ -185,8 +185,6 @@ export default function RideDetails() {
       
       // Reset form and refresh rides
       setRideForm({
-        pickupLocation: '',
-        dropoffLocation: '',
         distance: '',
         duration: '',
         fare: '',
@@ -203,6 +201,37 @@ export default function RideDetails() {
       setError(err.message)
     } finally {
       setIsSubmitting(false)
+    }
+  }
+  
+  const assignToActiveShift = async (rideId) => {
+    if (!activeShift) {
+      setError('No active shift to assign ride to')
+      return
+    }
+    
+    try {
+      const res = await fetch(`/api/rides/${rideId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          shiftId: activeShift.id
+        }),
+      })
+      
+      const data = await res.json()
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to assign ride to shift')
+      }
+      
+      // Refresh rides after successful assignment
+      fetchRides(user.id)
+    } catch (err) {
+      console.error('Error assigning ride to shift:', err)
+      setError(err.message)
     }
   }
   
@@ -319,38 +348,6 @@ export default function RideDetails() {
             )}
             
             <form onSubmit={handleAddRide}>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="pickupLocation">
-                  Pickup Location*
-                </label>
-                <input
-                  type="text"
-                  id="pickupLocation"
-                  name="pickupLocation"
-                  value={rideForm.pickupLocation}
-                  onChange={handleRideChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
-                  placeholder="e.g. Dublin Airport"
-                  required
-                />
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="dropoffLocation">
-                  Dropoff Location*
-                </label>
-                <input
-                  type="text"
-                  id="dropoffLocation"
-                  name="dropoffLocation"
-                  value={rideForm.dropoffLocation}
-                  onChange={handleRideChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
-                  placeholder="e.g. Dublin City Centre"
-                  required
-                />
-              </div>
-              
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="distance">
@@ -358,12 +355,13 @@ export default function RideDetails() {
                   </label>
                   <input
                     type="number"
+                    inputMode="decimal"
                     step="0.1"
                     id="distance"
                     name="distance"
                     value={rideForm.distance}
                     onChange={handleRideChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
+                    className="w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600 text-base"
                     required
                   />
                 </div>
@@ -373,11 +371,12 @@ export default function RideDetails() {
                   </label>
                   <input
                     type="number"
+                    inputMode="numeric"
                     id="duration"
                     name="duration"
                     value={rideForm.duration}
                     onChange={handleRideChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
+                    className="w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600 text-base"
                   />
                 </div>
               </div>
@@ -389,12 +388,13 @@ export default function RideDetails() {
                   </label>
                   <input
                     type="number"
+                    inputMode="decimal"
                     step="0.01"
                     id="fare"
                     name="fare"
                     value={rideForm.fare}
                     onChange={handleRideChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
+                    className="w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600 text-base"
                     required
                   />
                 </div>
@@ -404,12 +404,13 @@ export default function RideDetails() {
                   </label>
                   <input
                     type="number"
+                    inputMode="decimal"
                     step="0.01"
                     id="tips"
                     name="tips"
                     value={rideForm.tips}
                     onChange={handleRideChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
+                    className="w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600 text-base"
                   />
                 </div>
               </div>
@@ -420,12 +421,13 @@ export default function RideDetails() {
                 </label>
                 <input
                   type="number"
+                  inputMode="decimal"
                   step="0.01"
                   id="tollAmount"
                   name="tollAmount"
                   value={rideForm.tollAmount}
                   onChange={handleRideChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
+                  className="w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600 text-base"
                 />
               </div>
               
@@ -438,7 +440,7 @@ export default function RideDetails() {
                   name="rideSource"
                   value={rideForm.rideSource}
                   onChange={handleRideChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
+                  className="w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600 text-base"
                 >
                   <option value="WALK_IN">Walk-In</option>
                   <option value="UBER">Uber</option>
@@ -457,7 +459,7 @@ export default function RideDetails() {
                   name="shiftId"
                   value={rideForm.shiftId}
                   onChange={handleRideChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
+                  className="w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600 text-base"
                 >
                   <option value="">-- Not Assigned --</option>
                   {shifts.map(shift => (
@@ -481,26 +483,26 @@ export default function RideDetails() {
                   name="notes"
                   value={rideForm.notes}
                   onChange={handleRideChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
+                  className="w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600 text-base"
                   rows="2"
                 ></textarea>
               </div>
               
-              <div className="flex justify-center space-x-2">
+              <div className="flex justify-center space-x-3">
                 <button
                   type="button"
                   onClick={() => {
                     setShowAddForm(false)
                     setError('')
                   }}
-                  className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium"
+                  className="bg-gray-200 text-gray-700 px-5 py-3 rounded-md text-base font-medium"
                   disabled={isSubmitting}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium"
+                  className="bg-red-600 text-white px-5 py-3 rounded-md text-base font-medium"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? 'Adding...' : 'Add Ride'}
@@ -514,12 +516,13 @@ export default function RideDetails() {
         <div className="bg-white rounded-lg shadow-md p-4 mb-6 border border-gray-200">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-black">Recent Rides</h2>
-            <button className="bg-black text-white text-xs px-3 py-1 rounded-md flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-              </svg>
-              Filter
-            </button>
+            
+            {/* Error message shown at the top of the list for actions like assigning to shift */}
+            {error && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-1 rounded text-xs">
+                {error}
+              </div>
+            )}
           </div>
           
           {rides.length === 0 ? (
@@ -534,29 +537,17 @@ export default function RideDetails() {
             <div className="space-y-3">
               {rides.map(ride => (
                 <div key={ride.id} className="bg-gray-50 p-3 rounded-md border border-gray-200">
-                  <div className="flex justify-between items-center mb-2">
+                  <div className="flex justify-between items-center mb-3">
                     <span className="font-medium">{formatDate(ride.date)}</span>
                     <span className="text-sm bg-gray-200 px-2 py-1 rounded-full">
                       {getRideSourceLabel(ride.rideSource)}
                     </span>
                   </div>
                   
-                  <div className="mb-2">
-                    <div className="flex items-center text-sm">
-                      <div className="bg-green-500 h-2 w-2 rounded-full mr-2"></div>
-                      <span className="text-gray-600 truncate">{ride.pickupLocation}</span>
-                    </div>
-                    <div className="border-l border-gray-300 h-3 ml-1"></div>
-                    <div className="flex items-center text-sm">
-                      <div className="bg-red-500 h-2 w-2 rounded-full mr-2"></div>
-                      <span className="text-gray-600 truncate">{ride.dropoffLocation}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-3 gap-2 text-sm mb-2">
+                  <div className="grid grid-cols-3 gap-2 text-sm mb-3">
                     <div>
                       <p className="text-xs text-gray-500">Distance</p>
-                      <p>{ride.distance} km</p>
+                      <p className="font-medium">{ride.distance} km</p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Fare</p>
@@ -568,15 +559,33 @@ export default function RideDetails() {
                     </div>
                   </div>
                   
-                  {ride.shift ? (
-                    <div className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded inline-block">
-                      Shift: {formatDate(ride.shift.date)}
-                    </div>
-                  ) : (
-                    <div className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded inline-block">
-                      No Shift Assigned
-                    </div>
-                  )}
+                  <div className="flex justify-between items-center">
+                    {ride.shift ? (
+                      <div className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                        Shift: {formatDate(ride.shift.date)}
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-2">
+                        <div className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                          No Shift Assigned
+                        </div>
+                        {activeShift && (
+                          <button 
+                            onClick={() => assignToActiveShift(ride.id)}
+                            className="text-xs bg-black text-white px-2 py-1 rounded"
+                          >
+                            Assign to Active
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    
+                    {ride.tollAmount > 0 && (
+                      <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        Toll: {formatCurrency(ride.tollAmount)}
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
