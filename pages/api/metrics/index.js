@@ -58,50 +58,6 @@ export default async function handler(req, res) {
 
     console.log('[Metrics API] Date range:', { startDate, endDate });
 
-    // Get all completed rides within the date range
-    try {
-      console.log('[Metrics API] Querying rides...');
-      const rides = await prisma.ride.findMany({
-        where: {
-          driverId,
-          status: 'COMPLETED',
-          endTime: {
-            gte: startDate,
-            lte: endDate,
-          },
-        },
-        include: {
-          vehicle: true,
-        },
-      });
-      console.log(`[Metrics API] Found ${rides.length} rides`);
-    } catch (error) {
-      console.error('[Metrics API] Error querying rides:', error);
-      // Continue execution but log the error
-    }
-
-    // Get all shifts within the date range
-    try {
-      console.log('[Metrics API] Querying shifts...');
-      const shifts = await prisma.shift.findMany({
-        where: {
-          driverId,
-          endTime: {
-            not: null,
-            gte: startDate,
-            lte: endDate,
-          },
-        },
-        include: {
-          vehicle: true,
-        },
-      });
-      console.log(`[Metrics API] Found ${shifts.length} shifts`);
-    } catch (error) {
-      console.error('[Metrics API] Error querying shifts:', error);
-      // Continue execution but log the error
-    }
-
     // Define default empty arrays for data
     let rides = [];
     let shifts = [];
@@ -111,11 +67,11 @@ export default async function handler(req, res) {
 
     // Get all completed rides within the date range
     try {
+      console.log('[Metrics API] Querying rides...');
       rides = await prisma.ride.findMany({
         where: {
-          driverId,
-          status: 'COMPLETED',
-          endTime: {
+          userId: driverId,
+          date: {
             gte: startDate,
             lte: endDate,
           },
@@ -131,6 +87,7 @@ export default async function handler(req, res) {
 
     // Get all shifts within the date range
     try {
+      console.log('[Metrics API] Querying shifts...');
       shifts = await prisma.shift.findMany({
         where: {
           driverId,
@@ -189,7 +146,7 @@ export default async function handler(req, res) {
       insuranceExpenses = await prisma.insuranceExpense.findMany({
         where: {
           driverId,
-          date: {
+          startDate: {
             gte: startDate,
             lte: endDate,
           },
@@ -251,8 +208,8 @@ export default async function handler(req, res) {
     
     // Group rides by shift to calculate rides per shift
     const ridesByShift = rides.reduce((acc, ride) => {
-      if (ride.startTime) {
-        const shiftDate = new Date(ride.startTime).toDateString();
+      if (ride.date) {
+        const shiftDate = new Date(ride.date).toDateString();
         if (!acc[shiftDate]) {
           acc[shiftDate] = [];
         }
