@@ -1,32 +1,79 @@
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
+import { useAuth } from '../lib/auth'
+
+// Helper function to format currency
+const formatCurrency = (amount) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2
+  }).format(amount)
+}
 
 export default function Metrics() {
-  const [user, setUser] = useState(null)
+  const { user } = useAuth()
   const [loading, setLoading] = useState(true)
+  const [timeFrame, setTimeFrame] = useState('day') // day, week, month, year
+  const [metrics, setMetrics] = useState({
+    earnings: 0,
+    rides: 0,
+    hours: 0,
+    avgPerHour: 0,
+    expenses: 0,
+    fuelExpenses: 0,
+    maintenanceExpenses: 0,
+    insuranceExpenses: 0,
+    profit: 0,
+    tipsPercentage: 0,
+    ridesPerShift: 0,
+    distanceTraveled: 0,
+    fuelEfficiency: 0
+  })
+  
   const router = useRouter()
 
   useEffect(() => {
-    // Check if user is logged in
-    const userData = localStorage.getItem('user')
-    const token = localStorage.getItem('token')
-
-    if (!userData || !token) {
-      router.push('/login')
+    if (!user) {
+      setLoading(true)
       return
     }
-
+    
+    // Fetch metrics data
+    fetchMetricsData(timeFrame)
+    setLoading(false)
+  }, [user, timeFrame])
+  
+  const fetchMetricsData = async (period) => {
+    if (!user?.id) return
+    
     try {
-      const parsedUser = JSON.parse(userData)
-      setUser(parsedUser)
-    } catch (err) {
-      console.error('Error parsing user data', err)
-      router.push('/login')
+      setLoading(true)
+      const response = await fetch(`/api/metrics?driverId=${user.id}&period=${period}`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch metrics')
+      }
+      
+      const data = await response.json()
+      
+      // Calculate derived metrics if not provided by the API
+      if (!data.avgPerHour && data.hours > 0) {
+        data.avgPerHour = data.earnings / data.hours
+      }
+      
+      if (!data.profit) {
+        data.profit = data.earnings - data.expenses
+      }
+      
+      setMetrics(data)
+    } catch (error) {
+      console.error('Error fetching metrics:', error)
     } finally {
       setLoading(false)
     }
-  }, [router])
+  }
 
   if (loading) {
     return (
@@ -65,50 +112,121 @@ export default function Metrics() {
         {/* Time Period Selector */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6 border border-gray-200">
           <h2 className="text-lg font-bold text-black mb-4">Time Period</h2>
-          <div className="grid grid-cols-3 gap-2">
-            <button className="bg-red-600 text-white py-2 px-3 rounded-md text-sm font-medium">Day</button>
-            <button className="bg-black text-white py-2 px-3 rounded-md text-sm font-medium">Week</button>
-            <button className="bg-white text-black py-2 px-3 rounded-md text-sm font-medium border border-gray-300">Month</button>
+          <div className="grid grid-cols-4 gap-2">
+            <button 
+              className={`${timeFrame === 'day' ? 'bg-red-600 text-white' : 'bg-white text-black border border-gray-300'} py-2 px-3 rounded-md text-sm font-medium`}
+              onClick={() => setTimeFrame('day')}
+            >
+              Day
+            </button>
+            <button 
+              className={`${timeFrame === 'week' ? 'bg-red-600 text-white' : 'bg-white text-black border border-gray-300'} py-2 px-3 rounded-md text-sm font-medium`}
+              onClick={() => setTimeFrame('week')}
+            >
+              Week
+            </button>
+            <button 
+              className={`${timeFrame === 'month' ? 'bg-red-600 text-white' : 'bg-white text-black border border-gray-300'} py-2 px-3 rounded-md text-sm font-medium`}
+              onClick={() => setTimeFrame('month')}
+            >
+              Month
+            </button>
+            <button 
+              className={`${timeFrame === 'year' ? 'bg-red-600 text-white' : 'bg-white text-black border border-gray-300'} py-2 px-3 rounded-md text-sm font-medium`}
+              onClick={() => setTimeFrame('year')}
+            >
+              Year
+            </button>
           </div>
         </div>
         
-        {/* Performance Metrics */}
+        {/* Driver Performance Metrics */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6 border border-gray-200">
-          <h2 className="text-lg font-bold text-black mb-4">Today's Performance</h2>
+          <h2 className="text-lg font-bold text-black mb-4">Driver Performance</h2>
           
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div className="bg-white rounded-md p-3 border border-gray-200">
               <h3 className="text-xs text-gray-500 mb-1">Earnings</h3>
-              <p className="text-2xl font-bold text-red-600">€0</p>
+              <p className="text-2xl font-bold text-red-600">{formatCurrency(metrics.earnings)}</p>
             </div>
             <div className="bg-white rounded-md p-3 border border-gray-200">
               <h3 className="text-xs text-gray-500 mb-1">Rides</h3>
-              <p className="text-2xl font-bold text-black">0</p>
+              <p className="text-2xl font-bold text-black">{metrics.rides}</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="bg-white rounded-md p-3 border border-gray-200">
+              <h3 className="text-xs text-gray-500 mb-1">Hours</h3>
+              <p className="text-2xl font-bold text-black">{metrics.hours}</p>
+            </div>
+            <div className="bg-white rounded-md p-3 border border-gray-200">
+              <h3 className="text-xs text-gray-500 mb-1">Avg/Hour</h3>
+              <p className="text-2xl font-bold text-red-600">{formatCurrency(metrics.avgPerHour)}</p>
             </div>
           </div>
           
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white rounded-md p-3 border border-gray-200">
-              <h3 className="text-xs text-gray-500 mb-1">Hours</h3>
-              <p className="text-2xl font-bold text-black">0</p>
+              <h3 className="text-xs text-gray-500 mb-1">Tips %</h3>
+              <p className="text-2xl font-bold text-black">{metrics.tipsPercentage}%</p>
             </div>
             <div className="bg-white rounded-md p-3 border border-gray-200">
-              <h3 className="text-xs text-gray-500 mb-1">Avg/Hour</h3>
-              <p className="text-2xl font-bold text-red-600">€0</p>
+              <h3 className="text-xs text-gray-500 mb-1">Rides/Shift</h3>
+              <p className="text-2xl font-bold text-black">{metrics.ridesPerShift}</p>
             </div>
           </div>
         </div>
         
-        {/* Earnings Graph Placeholder */}
+        {/* Financial Metrics */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6 border border-gray-200">
-          <h2 className="text-lg font-bold text-black mb-4">Earnings Trend</h2>
+          <h2 className="text-lg font-bold text-black mb-4">Financial Overview</h2>
           
-          <div className="bg-gray-100 rounded-md h-48 flex items-center justify-center">
-            <div className="text-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-2 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              <p className="text-gray-500">Earnings data will appear here</p>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="bg-white rounded-md p-3 border border-gray-200">
+              <h3 className="text-xs text-gray-500 mb-1">Revenue</h3>
+              <p className="text-2xl font-bold text-green-600">{formatCurrency(metrics.earnings)}</p>
+            </div>
+            <div className="bg-white rounded-md p-3 border border-gray-200">
+              <h3 className="text-xs text-gray-500 mb-1">Expenses</h3>
+              <p className="text-2xl font-bold text-red-600">{formatCurrency(metrics.expenses)}</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 gap-4 mb-4">
+            <div className="bg-white rounded-md p-3 border border-gray-200">
+              <h3 className="text-xs text-gray-500 mb-1">Profit</h3>
+              <p className="text-2xl font-bold text-black">{formatCurrency(metrics.profit)}</p>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-md p-3 border border-gray-200 mb-4">
+            <h3 className="text-xs text-gray-500 mb-2">Expense Breakdown</h3>
+            <div className="h-4 bg-gray-200 rounded-full overflow-hidden mb-1">
+              <div className="h-full bg-red-600" style={{ width: `${(metrics.fuelExpenses / metrics.expenses) * 100}%` }}></div>
+              <div className="h-full bg-blue-600" style={{ width: `${(metrics.maintenanceExpenses / metrics.expenses) * 100}%`, marginLeft: `${(metrics.fuelExpenses / metrics.expenses) * 100}%` }}></div>
+              <div className="h-full bg-green-600" style={{ width: `${(metrics.insuranceExpenses / metrics.expenses) * 100}%`, marginLeft: `${((metrics.fuelExpenses + metrics.maintenanceExpenses) / metrics.expenses) * 100}%` }}></div>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span>Fuel: {formatCurrency(metrics.fuelExpenses)}</span>
+              <span>Maintenance: {formatCurrency(metrics.maintenanceExpenses)}</span>
+              <span>Insurance: {formatCurrency(metrics.insuranceExpenses)}</span>
+            </div>
+          </div>
+        </div>
+        
+        {/* Vehicle Metrics */}
+        <div className="bg-white rounded-lg shadow-md p-4 mb-6 border border-gray-200">
+          <h2 className="text-lg font-bold text-black mb-4">Vehicle Metrics</h2>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white rounded-md p-3 border border-gray-200">
+              <h3 className="text-xs text-gray-500 mb-1">Distance</h3>
+              <p className="text-xl font-bold text-black">{metrics.distanceTraveled} km</p>
+            </div>
+            <div className="bg-white rounded-md p-3 border border-gray-200">
+              <h3 className="text-xs text-gray-500 mb-1">Fuel Efficiency</h3>
+              <p className="text-xl font-bold text-black">{metrics.fuelEfficiency} mpg</p>
             </div>
           </div>
         </div>
@@ -119,15 +237,28 @@ export default function Metrics() {
           
           <div className="bg-white p-4 rounded-md">
             <div className="flex justify-between items-center mb-1">
-              <span className="text-sm font-medium">€0</span>
-              <span className="text-sm font-medium">€1,000,000</span>
+              <span className="text-sm font-medium">{formatCurrency(user?.totalEarnings || 0)}</span>
+              <span className="text-sm font-medium">{formatCurrency(user?.goalAmount || 1000000)}</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3 mb-3">
-              <div className="bg-red-600 h-3 rounded-full" style={{ width: '0%' }}></div>
+              <div 
+                className="bg-red-600 h-3 rounded-full" 
+                style={{ 
+                  width: `${user?.totalEarnings && user?.goalAmount ? (user.totalEarnings / user.goalAmount) * 100 : 0}%` 
+                }}
+              ></div>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-500">0% Complete</span>
-              <span className="text-xs text-gray-500">€1,000,000 remaining</span>
+              <span className="text-xs text-gray-500">
+                {user?.totalEarnings && user?.goalAmount ? 
+                  `${((user.totalEarnings / user.goalAmount) * 100).toFixed(2)}% Complete` : 
+                  '0% Complete'}
+              </span>
+              <span className="text-xs text-gray-500">
+                {user?.totalEarnings && user?.goalAmount ? 
+                  `${formatCurrency(user.goalAmount - user.totalEarnings)} remaining` : 
+                  `${formatCurrency(1000000)} remaining`}
+              </span>
             </div>
           </div>
         </div>
@@ -160,7 +291,10 @@ export default function Metrics() {
             </svg>
             <span>Stats</span>
           </button>
-          <button className="flex flex-col items-center text-gray-400 text-xs">
+          <button 
+            className="flex flex-col items-center text-gray-400 text-xs"
+            onClick={() => router.push('/profile')}
+          >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
