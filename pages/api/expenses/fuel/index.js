@@ -57,14 +57,29 @@ export default async function handler(req, res) {
       
     case 'POST':
       try {
-        const { vehicleId, driverId, amount, gallons, pricePerGallon, odometer, date, notes, fuelType } = req.body;
+        const { 
+          vehicleId, 
+          driverId, 
+          date, 
+          amount, 
+          quantity, 
+          fuelType, 
+          odometerReading, 
+          fullTank,
+          notes 
+        } = req.body;
+        
+        console.log('Fuel expense request body:', req.body);
         
         // Validate required fields
-        if (!vehicleId || !driverId || !amount || !date) {
-          return res.status(400).json({ error: 'Missing required fields: vehicleId, driverId, amount, and date are required' });
+        if (!vehicleId || !driverId || !amount) {
+          return res.status(400).json({ 
+            error: 'Missing required fields: vehicleId, driverId, and amount are required',
+            received: req.body 
+          });
         }
         
-        // Check if vehicle belongs to driver
+        // Check if vehicle exists and belongs to driver
         const vehicle = await prisma.vehicle.findFirst({
           where: {
             id: vehicleId,
@@ -76,35 +91,58 @@ export default async function handler(req, res) {
           return res.status(400).json({ error: 'Vehicle does not belong to this driver' });
         }
         
-        // Calculate gallons or pricePerGallon if one is provided but not the other
-        let calculatedGallons = gallons;
-        let calculatedPricePerGallon = pricePerGallon;
+        // Parse values properly, ensuring we handle nulls correctly
+        const parseDate = date ? new Date(date) : new Date();
+        const parseAmount = parseFloat(amount);
+        const parseQuantity = quantity ? parseFloat(quantity) : null;
+        const parseOdometerReading = odometerReading ? parseFloat(odometerReading) : null;
         
-        if (gallons && !pricePerGallon && amount) {
-          calculatedPricePerGallon = parseFloat(amount) / parseFloat(gallons);
-        } else if (!gallons && pricePerGallon && amount) {
-          calculatedGallons = parseFloat(amount) / parseFloat(pricePerGallon);
-        }
+        console.log('Creating fuel expense with:', {
+          vehicleId,
+          driverId,
+          date: parseDate,
+          amount: parseAmount,
+          quantity: parseQuantity,
+          fuelType: fuelType || vehicle.fuelType,
+          odometerReading: parseOdometerReading,
+          fullTank: fullTank === undefined ? true : fullTank,
+          notes
+        });
         
         // Create fuel expense
         const fuelExpense = await prisma.fuelExpense.create({
           data: {
             vehicleId,
             driverId,
-            amount: parseFloat(amount),
-            gallons: calculatedGallons ? parseFloat(calculatedGallons) : null,
-            pricePerGallon: calculatedPricePerGallon ? parseFloat(calculatedPricePerGallon) : null,
-            odometer: odometer ? parseInt(odometer) : null,
-            date: new Date(date),
-            notes: notes || null,
-            fuelType: fuelType || vehicle.fuelType || 'GASOLINE'
+            date: parseDate,
+            amount: parseAmount,
+            quantity: parseQuantity,
+            fuelType: fuelType || vehicle.fuelType,
+            odometerReading: parseOdometerReading,
+            fullTank: fullTank === undefined ? true : fullTank,
+            notes: notes || null
+          },
+          include: {
+            vehicle: {
+              select: {
+                make: true,
+                model: true,
+                licensePlate: true,
+                fuelType: true
+              }
+            }
           }
         });
         
+        console.log('Fuel expense created:', fuelExpense.id);
         return res.status(201).json(fuelExpense);
       } catch (error) {
         console.error('Error creating fuel expense:', error);
-        return res.status(500).json({ error: 'Failed to create fuel expense' });
+        return res.status(500).json({ 
+          error: 'Failed to create fuel expense',
+          details: error.message,
+          stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
       }
       
     default:
