@@ -2,6 +2,23 @@ import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { format } from 'date-fns'
+import FuelExpenseManager from '../components/FuelExpenseManager'
+import MaintenanceExpenseManager from '../components/MaintenanceExpenseManager'
+import InsuranceExpenseManager from '../components/InsuranceExpenseManager'
+
+// Helper component for Other expenses
+const OtherExpenseManager = ({ vehicles }) => {
+  return (
+    <div className="bg-white shadow-md rounded-lg p-6 my-6">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-800">Other Expenses</h2>
+      </div>
+      <div className="text-center py-6 border border-dashed border-gray-300 rounded-lg">
+        <p className="text-gray-500">Other expense management coming soon.</p>
+      </div>
+    </div>
+  )
+}
 
 export default function ExpensesPage() {
   const [user, setUser] = useState(null)
@@ -84,7 +101,7 @@ export default function ExpensesPage() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <header className="bg-black shadow-md">
+      <header className="bg-black shadow-md fixed top-0 left-0 right-0 z-10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <button 
             onClick={() => router.push('/dashboard')}
@@ -100,12 +117,12 @@ export default function ExpensesPage() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6">
+      <main className="container mx-auto px-4 pt-24 pb-20">
         {/* Tabs */}
-        <div className="flex overflow-x-auto mb-6 bg-gray-100 rounded-lg p-1">
+        <div className="flex overflow-x-auto mb-6 bg-gray-100 rounded-lg p-1 sticky top-16 z-10 shadow-md">
           <button
             onClick={() => setActiveTab('fuel')}
-            className={`flex-1 py-2 px-4 text-sm font-medium rounded-md ${
+            className={`flex-1 py-3 px-4 text-sm font-medium rounded-md whitespace-nowrap ${
               activeTab === 'fuel'
                 ? 'bg-red-600 text-white'
                 : 'text-gray-700 hover:bg-gray-200'
@@ -115,7 +132,7 @@ export default function ExpensesPage() {
           </button>
           <button
             onClick={() => setActiveTab('maintenance')}
-            className={`flex-1 py-2 px-4 text-sm font-medium rounded-md ${
+            className={`flex-1 py-3 px-4 text-sm font-medium rounded-md whitespace-nowrap ${
               activeTab === 'maintenance'
                 ? 'bg-red-600 text-white'
                 : 'text-gray-700 hover:bg-gray-200'
@@ -125,7 +142,7 @@ export default function ExpensesPage() {
           </button>
           <button
             onClick={() => setActiveTab('insurance')}
-            className={`flex-1 py-2 px-4 text-sm font-medium rounded-md ${
+            className={`flex-1 py-3 px-4 text-sm font-medium rounded-md whitespace-nowrap ${
               activeTab === 'insurance'
                 ? 'bg-red-600 text-white'
                 : 'text-gray-700 hover:bg-gray-200'
@@ -135,7 +152,7 @@ export default function ExpensesPage() {
           </button>
           <button
             onClick={() => setActiveTab('other')}
-            className={`flex-1 py-2 px-4 text-sm font-medium rounded-md ${
+            className={`flex-1 py-3 px-4 text-sm font-medium rounded-md whitespace-nowrap ${
               activeTab === 'other'
                 ? 'bg-red-600 text-white'
                 : 'text-gray-700 hover:bg-gray-200'
@@ -149,44 +166,32 @@ export default function ExpensesPage() {
         <div>
           {activeTab === 'fuel' && (
             <FuelExpenseManager 
-              user={user} 
               vehicles={vehicles} 
-              formatDate={formatDate} 
-              formatCurrency={formatCurrency} 
             />
           )}
           
           {activeTab === 'maintenance' && (
             <MaintenanceExpenseManager 
-              user={user} 
               vehicles={vehicles} 
-              formatDate={formatDate} 
-              formatCurrency={formatCurrency} 
             />
           )}
           
           {activeTab === 'insurance' && (
             <InsuranceExpenseManager 
-              user={user} 
               vehicles={vehicles} 
-              formatDate={formatDate} 
-              formatCurrency={formatCurrency} 
             />
           )}
           
           {activeTab === 'other' && (
             <OtherExpenseManager 
-              user={user} 
               vehicles={vehicles} 
-              formatDate={formatDate} 
-              formatCurrency={formatCurrency} 
             />
           )}
         </div>
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-black border-t border-gray-800 p-3">
+      <nav className="fixed bottom-0 left-0 right-0 bg-black border-t border-gray-800 p-3 z-20">
         <div className="flex justify-around">
           <button 
             className="flex flex-col items-center text-gray-400 text-xs"
@@ -227,10 +232,4 @@ export default function ExpensesPage() {
       </nav>
     </div>
   )
-}
-
-// Placeholder components for the different expense managers
-const FuelExpenseManager = () => <div>Fuel expense management coming soon</div>
-const MaintenanceExpenseManager = () => <div>Maintenance expense management coming soon</div>
-const InsuranceExpenseManager = () => <div>Insurance expense management coming soon</div>
-const OtherExpenseManager = () => <div>Other expense management coming soon</div> 
+} 
