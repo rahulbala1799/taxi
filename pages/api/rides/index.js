@@ -59,13 +59,13 @@ export default async function handler(req, res) {
           distance, 
           duration, 
           fare, 
-          tips = 0, 
+          tips, 
           vehicleType = "Tesla", 
           notes,
           userId,
           shiftId,
           rideSource = "WALK_IN",
-          tollAmount = 0
+          tollAmount
         } = req.body;
 
         // Validate required fields
@@ -73,8 +73,14 @@ export default async function handler(req, res) {
           return res.status(400).json({ error: 'Missing required ride details' });
         }
 
+        // Parse and default values
+        const parsedDuration = duration ? parseInt(duration) : 0;
+        const parsedTips = tips ? parseFloat(tips) : 0;
+        const parsedTollAmount = tollAmount ? parseFloat(tollAmount) : 0;
+        const parsedFare = parseFloat(fare);
+
         // Calculate total earned
-        const totalEarned = parseFloat(fare) + parseFloat(tips) + parseFloat(tollAmount);
+        const totalEarned = parsedFare + parsedTips + parsedTollAmount;
 
         // If shiftId is provided, verify that it belongs to this user and is active
         if (shiftId) {
@@ -96,10 +102,10 @@ export default async function handler(req, res) {
             pickupLocation,
             dropoffLocation,
             distance: parseFloat(distance),
-            duration: parseInt(duration || 0),
-            fare: parseFloat(fare),
-            tips: parseFloat(tips),
-            tollAmount: parseFloat(tollAmount),
+            duration: parsedDuration,
+            fare: parsedFare,
+            tips: parsedTips,
+            tollAmount: parsedTollAmount,
             totalEarned,
             vehicleType,
             notes,

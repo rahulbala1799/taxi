@@ -69,7 +69,7 @@ export default async function handler(req, res) {
         if (pickupLocation) updateData.pickupLocation = pickupLocation;
         if (dropoffLocation) updateData.dropoffLocation = dropoffLocation;
         if (distance) updateData.distance = parseFloat(distance);
-        if (duration) updateData.duration = parseInt(duration);
+        if (duration !== undefined) updateData.duration = duration === '' ? 0 : parseInt(duration);
         if (vehicleType) updateData.vehicleType = vehicleType;
         if (notes !== undefined) updateData.notes = notes;
         if (rideSource) updateData.rideSource = rideSource;
@@ -90,9 +90,10 @@ export default async function handler(req, res) {
           return res.status(404).json({ error: 'Ride not found' });
         }
 
-        const newFare = fare !== undefined ? parseFloat(fare) : currentRide.fare;
-        const newTips = tips !== undefined ? parseFloat(tips) : currentRide.tips;
-        const newTollAmount = tollAmount !== undefined ? parseFloat(tollAmount) : currentRide.tollAmount;
+        // Parse and prepare values
+        const newFare = fare !== undefined ? (fare === '' ? 0 : parseFloat(fare)) : currentRide.fare;
+        const newTips = tips !== undefined ? (tips === '' ? 0 : parseFloat(tips)) : currentRide.tips;
+        const newTollAmount = tollAmount !== undefined ? (tollAmount === '' ? 0 : parseFloat(tollAmount)) : currentRide.tollAmount;
         
         if (fare !== undefined) updateData.fare = newFare;
         if (tips !== undefined) updateData.tips = newTips;

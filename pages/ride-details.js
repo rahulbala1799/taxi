@@ -164,17 +164,23 @@ export default function RideDetails() {
         throw new Error('Please fill in all required fields')
       }
       
+      // Prepare form data with empty values converted to zeros
+      const formData = {
+        ...rideForm,
+        pickupLocation: 'Not specified',  // Default value
+        dropoffLocation: 'Not specified', // Default value
+        tips: rideForm.tips === '' ? '0' : rideForm.tips,
+        tollAmount: rideForm.tollAmount === '' ? '0' : rideForm.tollAmount,
+        duration: rideForm.duration === '' ? '0' : rideForm.duration,
+        userId: user.id
+      }
+      
       const res = await fetch('/api/rides', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...rideForm,
-          pickupLocation: 'Not specified',  // Default value
-          dropoffLocation: 'Not specified', // Default value
-          userId: user.id
-        }),
+        body: JSON.stringify(formData),
       })
       
       const data = await res.json()
