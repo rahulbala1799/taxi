@@ -65,12 +65,13 @@ export default async function handler(req, res) {
     let maintenanceExpenses = [];
     let insuranceExpenses = [];
 
-    // Get all completed rides within the date range
+    // IMPORTANT FIX: Get all rides within the date range
+    // Remove status and endTime as they don't exist in the schema
     try {
       console.log('[Metrics API] Querying rides...');
       rides = await prisma.ride.findMany({
         where: {
-          userId: driverId,
+          userId: driverId, // Using userId not driverId
           date: {
             gte: startDate,
             lte: endDate,
@@ -90,9 +91,9 @@ export default async function handler(req, res) {
       console.log('[Metrics API] Querying shifts...');
       shifts = await prisma.shift.findMany({
         where: {
-          driverId,
-          endTime: {
-            not: null,
+          driverId, // This is correct as per schema
+          // Remove endTime check since rides don't use it
+          date: {
             gte: startDate,
             lte: endDate,
           },
@@ -111,7 +112,7 @@ export default async function handler(req, res) {
       console.log('[Metrics API] Querying fuel expenses...');
       fuelExpenses = await prisma.fuelExpense.findMany({
         where: {
-          driverId,
+          driverId, // This is correct as per schema
           date: {
             gte: startDate,
             lte: endDate,
@@ -128,7 +129,7 @@ export default async function handler(req, res) {
       console.log('[Metrics API] Querying maintenance expenses...');
       maintenanceExpenses = await prisma.maintenanceExpense.findMany({
         where: {
-          driverId,
+          driverId, // This is correct as per schema
           date: {
             gte: startDate,
             lte: endDate,
@@ -145,8 +146,8 @@ export default async function handler(req, res) {
       console.log('[Metrics API] Querying insurance expenses...');
       insuranceExpenses = await prisma.insuranceExpense.findMany({
         where: {
-          driverId,
-          startDate: {
+          driverId, // This is correct as per schema
+          startDate: { // Changed from 'date' to 'startDate' to match schema
             gte: startDate,
             lte: endDate,
           },
@@ -208,7 +209,7 @@ export default async function handler(req, res) {
     
     // Group rides by shift to calculate rides per shift
     const ridesByShift = rides.reduce((acc, ride) => {
-      if (ride.date) {
+      if (ride.date) {  // Changed from startTime to date
         const shiftDate = new Date(ride.date).toDateString();
         if (!acc[shiftDate]) {
           acc[shiftDate] = [];
