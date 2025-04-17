@@ -5,9 +5,9 @@ import { useAuth } from '../lib/auth'
 
 // Helper function to format currency
 const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-IE', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'EUR',
     minimumFractionDigits: 2
   }).format(amount)
 }
