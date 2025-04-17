@@ -15,7 +15,7 @@ const formatCurrency = (amount) => {
 export default function Metrics() {
   const { user } = useAuth()
   const [loading, setLoading] = useState(true)
-  const [timeFrame, setTimeFrame] = useState('week') // Changed default from 'day' to 'week'
+  const [timeFrame, setTimeFrame] = useState('week')
   const [metrics, setMetrics] = useState({
     earnings: 0,
     rides: 0,
@@ -31,63 +31,31 @@ export default function Metrics() {
     distanceTraveled: 0,
     fuelEfficiency: 0
   })
-  const [error, setError] = useState(null) // Add state for error messages
-  const [debugInfo, setDebugInfo] = useState({}) // Add state for debug info
   
   const router = useRouter()
 
   useEffect(() => {
     if (!user) {
       setLoading(true)
-      setDebugInfo(prev => ({ ...prev, userStatus: 'No user found' }))
       return
     }
-    
-    setDebugInfo(prev => ({ 
-      ...prev, 
-      userStatus: 'User found', 
-      userId: user.id, 
-      timeFrame 
-    }))
     
     // Fetch metrics data
     fetchMetricsData(timeFrame)
   }, [user, timeFrame])
   
   const fetchMetricsData = async (period) => {
-    if (!user?.id) {
-      setDebugInfo(prev => ({ ...prev, fetchError: 'No user ID available' }))
-      return
-    }
+    if (!user?.id) return
     
     try {
       setLoading(true)
-      setDebugInfo(prev => ({ 
-        ...prev, 
-        fetchStarted: `Fetching for ${user.id} with period ${period}`,
-        apiEndpoint: `/api/metrics?driverId=${user.id}&period=${period}`
-      }))
-      
       const response = await fetch(`/api/metrics?driverId=${user.id}&period=${period}`)
       
-      setDebugInfo(prev => ({ 
-        ...prev, 
-        responseStatus: response.status,
-        responseOk: response.ok
-      }))
-      
       if (!response.ok) {
-        const errorText = await response.text()
-        setError(`Failed to fetch metrics: ${response.status} - ${errorText}`)
-        throw new Error(`Failed to fetch metrics: ${response.status} - ${errorText}`)
+        throw new Error('Failed to fetch metrics')
       }
       
       const data = await response.json()
-      setDebugInfo(prev => ({ 
-        ...prev, 
-        dataReceived: 'Data received',
-        metricsData: JSON.stringify(data).substring(0, 100) + '...' // Truncate for display
-      }))
       
       // Calculate derived metrics if not provided by the API
       if (!data.avgPerHour && data.hours > 0) {
@@ -101,8 +69,6 @@ export default function Metrics() {
       setMetrics(data)
     } catch (error) {
       console.error('Error fetching metrics:', error)
-      setError(error.message)
-      setDebugInfo(prev => ({ ...prev, fetchError: error.message }))
     } finally {
       setLoading(false)
     }
@@ -115,13 +81,8 @@ export default function Metrics() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4">
-        <div className="text-2xl font-bold text-red-600 mb-4">Loading...</div>
-        {/* Show debug info while loading */}
-        <div className="bg-gray-100 p-4 rounded-md text-xs w-full max-w-lg overflow-auto">
-          <h3 className="font-bold mb-2">Debug Info:</h3>
-          <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
-        </div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-2xl font-bold text-red-600">Loading...</div>
       </div>
     )
   }
@@ -155,29 +116,6 @@ export default function Metrics() {
           </button>
         </div>
       </header>
-
-      {/* Debug Info Panel */}
-      <div className="container mx-auto px-4 py-2">
-        <div className="bg-gray-100 p-3 rounded-md mb-4 text-xs">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="font-bold">Debug Info</h3>
-            <button 
-              onClick={() => setDebugInfo({})}
-              className="text-xs bg-gray-300 px-2 py-1 rounded"
-            >
-              Clear
-            </button>
-          </div>
-          {error && (
-            <div className="bg-red-100 text-red-800 p-2 rounded mb-2">
-              Error: {error}
-            </div>
-          )}
-          <div>User ID: {user?.id || 'Not found'}</div>
-          <div>Time Frame: {timeFrame}</div>
-          <pre className="mt-2 bg-white p-2 rounded overflow-auto">{JSON.stringify(debugInfo, null, 2)}</pre>
-        </div>
-      </div>
 
       <main className="container mx-auto px-4 py-6">
         {/* Time Period Selector */}
