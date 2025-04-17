@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { driverId, period = 'day' } = req.query;
+    const { driverId, period = 'week' } = req.query;
 
     console.log('[Metrics API] Request received:', { driverId, period });
 

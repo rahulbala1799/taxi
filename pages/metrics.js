@@ -15,7 +15,7 @@ const formatCurrency = (amount) => {
 export default function Metrics() {
   const { user } = useAuth()
   const [loading, setLoading] = useState(true)
-  const [timeFrame, setTimeFrame] = useState('day') // day, week, month, year
+  const [timeFrame, setTimeFrame] = useState('week') // Changed default from 'day' to 'week'
   const [metrics, setMetrics] = useState({
     earnings: 0,
     rides: 0,
@@ -183,13 +183,7 @@ export default function Metrics() {
         {/* Time Period Selector */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6 border border-gray-200">
           <h2 className="text-lg font-bold text-black mb-4">Time Period</h2>
-          <div className="grid grid-cols-4 gap-2">
-            <button 
-              className={`${timeFrame === 'day' ? 'bg-red-600 text-white' : 'bg-white text-black border border-gray-300'} py-2 px-3 rounded-md text-sm font-medium`}
-              onClick={() => setTimeFrame('day')}
-            >
-              Day
-            </button>
+          <div className="grid grid-cols-3 gap-2">
             <button 
               className={`${timeFrame === 'week' ? 'bg-red-600 text-white' : 'bg-white text-black border border-gray-300'} py-2 px-3 rounded-md text-sm font-medium`}
               onClick={() => setTimeFrame('week')}
