@@ -257,6 +257,15 @@ export default function ManageShift() {
     return format(date, 'h:mm a')
   }
 
+  // Add a format currency function
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IE', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 2
+    }).format(amount || 0);
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -328,6 +337,14 @@ export default function ManageShift() {
                   <div>
                     <p className="text-xs text-gray-500">Date</p>
                     <p className="font-medium">{formatDate(activeShift.date)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Current Earnings</p>
+                    <p className="font-medium text-green-600">{formatCurrency(activeShift.totalEarnings)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Rides</p>
+                    <p className="font-medium">{activeShift.rides ? activeShift.rides.length : 0}</p>
                   </div>
                 </div>
               </div>
@@ -534,6 +551,14 @@ export default function ManageShift() {
                     <div>
                       <p className="text-xs text-gray-500">Time</p>
                       <p>{formatTime(shift.startTime)} - {formatTime(shift.endTime)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Earnings</p>
+                      <p className="text-green-600 font-medium">{formatCurrency(shift.totalEarnings)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Rides</p>
+                      <p>{shift.rides ? shift.rides.length : 0}</p>
                     </div>
                     {shift.vehicle?.fuelType === 'Electric' && (
                       <div className="col-span-2">

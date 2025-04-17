@@ -18,6 +18,14 @@ export default async function handler(req, res) {
                 licensePlate: true,
                 fuelType: true
               }
+            },
+            rides: {
+              select: {
+                id: true,
+                fare: true,
+                tips: true,
+                totalEarned: true
+              }
             }
           }
         });
@@ -26,7 +34,18 @@ export default async function handler(req, res) {
           return res.status(404).json({ error: 'Shift not found' });
         }
 
-        return res.status(200).json(shift);
+        // Calculate total earnings for the shift
+        const totalEarnings = shift.rides.reduce((sum, ride) => {
+          return sum + (parseFloat(ride.totalEarned) || 0);
+        }, 0);
+
+        // Add total earnings to the response
+        const shiftWithEarnings = {
+          ...shift,
+          totalEarnings
+        };
+
+        return res.status(200).json(shiftWithEarnings);
       } catch (error) {
         console.error('Error fetching shift:', error);
         return res.status(500).json({ error: 'Failed to fetch shift' });

@@ -19,7 +19,7 @@ export default async function handler(req, res) {
           query.status = status;
         }
         
-        // Get shifts with related vehicle info
+        // Get shifts with related vehicle info and rides
         const shifts = await prisma.shift.findMany({
           where: query,
           include: {
@@ -31,6 +31,14 @@ export default async function handler(req, res) {
                 licensePlate: true,
                 fuelType: true
               }
+            },
+            rides: {
+              select: {
+                id: true,
+                fare: true,
+                tips: true,
+                totalEarned: true
+              }
             }
           },
           orderBy: {
@@ -38,7 +46,19 @@ export default async function handler(req, res) {
           }
         });
         
-        res.status(200).json(shifts);
+        // Calculate total earnings for each shift
+        const shiftsWithEarnings = shifts.map(shift => {
+          const totalEarnings = shift.rides.reduce((sum, ride) => {
+            return sum + (parseFloat(ride.totalEarned) || 0);
+          }, 0);
+          
+          return {
+            ...shift,
+            totalEarnings
+          };
+        });
+        
+        res.status(200).json(shiftsWithEarnings);
       } catch (error) {
         console.error('Error fetching shifts:', error);
         res.status(500).json({ error: 'Failed to fetch shifts' });
