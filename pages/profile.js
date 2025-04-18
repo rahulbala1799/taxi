@@ -28,7 +28,7 @@ export default function Profile() {
   return (
     <div className="min-h-screen bg-white text-black pb-16">
       <Head>
-        <title>Profile | Stijoi Million</title>
+        <title>Profile | Stijoy's Million Euro Journey</title>
         <meta name="description" content="Your profile" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <link rel="icon" href="/favicon.ico" />

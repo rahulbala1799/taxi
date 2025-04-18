@@ -145,7 +145,7 @@ export default function Vehicles() {
   return (
     <div className="min-h-screen bg-white text-black pb-16">
       <Head>
-        <title>Manage Vehicles | Stijoi Million</title>
+        <title>Manage Vehicles | Stijoy's Million Euro Journey</title>
         <meta name="description" content="Manage your taxi vehicles" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <link rel="icon" href="/favicon.ico" />

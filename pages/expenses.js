@@ -95,7 +95,7 @@ export default function ExpensesPage() {
   return (
     <div className="min-h-screen bg-white text-black pb-16">
       <Head>
-        <title>Expense Management | Stijoi Million</title>
+        <title>Expense Management | Stijoy's Million Euro Journey</title>
         <meta name="description" content="Manage your taxi expenses" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <link rel="icon" href="/favicon.ico" />

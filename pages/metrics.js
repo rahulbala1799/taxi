@@ -90,7 +90,7 @@ export default function Metrics() {
   return (
     <div className="min-h-screen bg-white text-black pb-16">
       <Head>
-        <title>Metrics | Stijoi Million</title>
+        <title>Metrics | Stijoy's Million Euro Journey</title>
         <meta name="description" content="View your performance metrics" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <link rel="icon" href="/favicon.ico" />

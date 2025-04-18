@@ -45,7 +45,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-white text-black">
       <Head>
-        <title>Dashboard | Stijoi Stephen Taxi Millionaire</title>
+        <title>Dashboard | Stijoy's Million Euro Journey</title>
         <meta name="description" content="Track your progress to €1,000,000" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <link rel="icon" href="/favicon.ico" />
@@ -54,7 +54,7 @@ export default function Dashboard() {
       <header className="bg-black shadow-md">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-white">STIJOI<span className="text-red-600">MILLION</span></h1>
+            <h1 className="text-xl font-bold text-white">STIJOY'S MILLION</h1>
           </div>
           <div className="flex items-center space-x-4">
             <div className="text-white text-sm">
