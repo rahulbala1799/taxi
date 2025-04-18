@@ -18,6 +18,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Driver ID is required' });
     }
 
+    // Normalize period parameter to handle different casings and formats
+    const normalizedPeriod = String(period).toLowerCase().trim().replace('-', '').replace('_', '');
+    console.log('[Metrics API] Normalized period:', normalizedPeriod);
+
     // IMPORTANT: The rides in the database are from 2025, so we need to override the current date
     // to match the data in the database for testing purposes
     const useOverriddenDate = true; // Set to true to use 2025 as the current year
@@ -38,7 +42,8 @@ export default async function handler(req, res) {
     let endDate = new Date(today);
     endDate.setHours(23, 59, 59, 999);
 
-    switch (period) {
+    // Handle different period formats
+    switch (normalizedPeriod) {
       case 'day':
         // Already set to today
         break;
@@ -63,9 +68,22 @@ export default async function handler(req, res) {
         endDate = new Date(today.getFullYear(), 11, 31);
         endDate.setHours(23, 59, 59, 999);
         break;
+      case 'alltime':
+      case 'all':
+      case 'lifetime':
+        // Use a very old start date to include all data
+        startDate.setFullYear(2000, 0, 1);
+        // Use a future end date
+        endDate = new Date(2050, 11, 31);
+        endDate.setHours(23, 59, 59, 999);
+        break;
       default:
-        console.log('[Metrics API] Invalid period provided:', period);
-        return res.status(400).json({ error: 'Invalid period' });
+        console.log('[Metrics API] Unrecognized period:', period, 'normalized as:', normalizedPeriod);
+        console.log('[Metrics API] Defaulting to all-time period');
+        // Default to all-time for unrecognized periods
+        startDate.setFullYear(2000, 0, 1);
+        endDate = new Date(2050, 11, 31);
+        endDate.setHours(23, 59, 59, 999);
     }
 
     console.log('[Metrics API] Date range:', { 
