@@ -3,16 +3,16 @@ import { useAuth } from '../lib/auth'
 
 // Helper functions
 const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-IE', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'EUR',
     minimumFractionDigits: 2
   }).format(amount)
 }
 
 const formatDate = (dateString) => {
   const options = { year: 'numeric', month: 'short', day: 'numeric' }
-  return new Date(dateString).toLocaleDateString('en-US', options)
+  return new Date(dateString).toLocaleDateString('en-IE', options)
 }
 
 export default function FuelExpenseManager({ vehicles }) {
@@ -50,7 +50,7 @@ export default function FuelExpenseManager({ vehicles }) {
       setExpenseForm(prev => ({
         ...prev,
         vehicleId: vehicles[0].id,
-        fuelType: vehicles[0].fuelType
+        fuelType: vehicles[0].fuelType || 'Petrol'
       }))
     }
   }, [vehicles])
@@ -178,41 +178,48 @@ export default function FuelExpenseManager({ vehicles }) {
   }
   
   return (
-    <div className="bg-white shadow-md rounded-lg p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-semibold text-gray-800">Fuel Expenses</h2>
+    <div className="bg-white rounded-lg shadow-sm mb-6 border border-gray-200">
+      <div className="flex justify-between items-center p-4 border-b border-gray-200">
+        <h2 className="text-xl font-bold">Fuel Expenses</h2>
         {!showAddForm && (
           <button
             onClick={() => setShowAddForm(true)}
-            className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded"
+            className="bg-red-600 hover:bg-red-700 text-white py-3 px-5 rounded-md font-medium text-sm"
+            aria-label="Add Expense"
           >
-            Add Expense
+            <div className="flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+              </svg>
+              Add
+            </div>
           </button>
         )}
       </div>
       
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 m-4 rounded">
           {error}
         </div>
       )}
       
-      <div className="space-y-6">
+      <div className="p-4">
         {showAddForm && (
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="text-lg font-medium mb-4">Add Fuel Expense</h3>
+          <div className="bg-gray-50 p-4 rounded-lg mb-6 border border-gray-200">
+            <h3 className="text-lg font-bold mb-4 text-center">Add Fuel Expense</h3>
             
-            <div className="mb-4">
-              <label className="block text-gray-700 mb-2">Select Vehicle</label>
+            <div className="mb-5">
+              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="vehicle">Select Vehicle</label>
               <select
-                className="w-full p-2 border border-gray-300 rounded"
+                id="vehicle"
+                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 text-base"
                 value={selectedVehicleId}
                 onChange={(e) => setSelectedVehicleId(e.target.value)}
               >
                 <option value="">-- Select Vehicle --</option>
                 {vehicles.map((vehicle) => (
                   <option key={vehicle.id} value={vehicle.id}>
-                    {vehicle.make} {vehicle.model} ({vehicle.registrationNumber})
+                    {vehicle.model} ({vehicle.licensePlate})
                   </option>
                 ))}
               </select>
@@ -220,121 +227,126 @@ export default function FuelExpenseManager({ vehicles }) {
             
             {selectedVehicleId && (
               <form onSubmit={handleSubmit}>
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-gray-700 mb-2">Date</label>
+                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="date">Date</label>
                     <input
                       type="date"
+                      id="date"
                       name="date"
                       value={expenseForm.date}
                       onChange={handleExpenseChange}
-                      className="w-full p-2 border border-gray-300 rounded"
+                      className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 text-base"
                       required
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-gray-700 mb-2">Odometer Reading</label>
+                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="amount">Amount Paid (€)</label>
                     <input
                       type="number"
-                      name="odometerReading"
-                      value={expenseForm.odometerReading}
-                      onChange={handleExpenseChange}
-                      className="w-full p-2 border border-gray-300 rounded"
-                      placeholder="Enter miles/km"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-gray-700 mb-2">Amount Paid</label>
-                    <input
-                      type="number"
+                      id="amount"
                       name="amount"
                       value={expenseForm.amount}
                       onChange={handleExpenseChange}
                       step="0.01"
-                      className="w-full p-2 border border-gray-300 rounded"
+                      className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 text-base"
                       placeholder="0.00"
                       required
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-gray-700 mb-2">
-                      {expenseForm.fuelType === 'Electric' ? 'kWh' : 'Gallons/Liters'}
-                    </label>
-                    <input
-                      type="number"
-                      name="quantity"
-                      value={expenseForm.quantity}
-                      onChange={handleExpenseChange}
-                      step="0.01"
-                      className="w-full p-2 border border-gray-300 rounded"
-                      placeholder="0.00"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-gray-700 mb-2">Fuel Type</label>
+                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="fuelType">Fuel Type</label>
                     <select
+                      id="fuelType"
                       name="fuelType"
                       value={expenseForm.fuelType}
                       onChange={handleExpenseChange}
-                      className="w-full p-2 border border-gray-300 rounded"
+                      className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 text-base"
                     >
                       <option value="Petrol">Petrol</option>
                       <option value="Diesel">Diesel</option>
                       <option value="Electric">Electric</option>
                       <option value="Hybrid">Hybrid</option>
-                      <option value="LPG">LPG</option>
-                      <option value="CNG">CNG</option>
                       <option value="Other">Other</option>
                     </select>
                   </div>
                   
-                  <div className="col-span-2">
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="quantity">
+                      {expenseForm.fuelType === 'Electric' ? 'kWh' : 'Liters'}
+                    </label>
+                    <input
+                      type="number"
+                      id="quantity"
+                      name="quantity"
+                      value={expenseForm.quantity}
+                      onChange={handleExpenseChange}
+                      step="0.01"
+                      className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 text-base"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="odometerReading">Odometer Reading</label>
+                    <input
+                      type="number"
+                      id="odometerReading"
+                      name="odometerReading"
+                      value={expenseForm.odometerReading}
+                      onChange={handleExpenseChange}
+                      className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 text-base"
+                      placeholder="Enter km"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="py-2">
                     <label className="flex items-center">
                       <input
                         type="checkbox"
                         name="fullTank"
                         checked={expenseForm.fullTank}
                         onChange={handleExpenseChange}
-                        className="mr-2"
+                        className="h-5 w-5 text-red-600 mr-3"
                       />
-                      <span className="text-gray-700">
+                      <span className="text-gray-700 text-base">
                         {expenseForm.fuelType === 'Electric' ? 'Full Charge' : 'Full Tank'}
                       </span>
                     </label>
                   </div>
                   
-                  <div className="col-span-2">
-                    <label className="block text-gray-700 mb-2">Notes</label>
+                  <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="notes">Notes (Optional)</label>
                     <textarea
+                      id="notes"
                       name="notes"
                       value={expenseForm.notes}
                       onChange={handleExpenseChange}
-                      className="w-full p-2 border border-gray-300 rounded"
+                      className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 text-base"
                       rows="2"
-                      placeholder="Optional notes"
+                      placeholder="Add any notes here"
                     ></textarea>
                   </div>
                 </div>
                 
-                <div className="flex justify-end space-x-2">
+                <div className="flex space-x-3 mt-6">
                   <button
                     type="button"
                     onClick={() => setShowAddForm(false)}
-                    className="bg-gray-300 hover:bg-gray-400 text-gray-800 py-2 px-4 rounded"
+                    className="flex-1 bg-gray-300 hover:bg-gray-400 text-black py-3 px-4 rounded-md font-medium"
+                    disabled={isSubmitting}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded disabled:opacity-50"
+                    className="flex-1 bg-black hover:bg-gray-800 text-white py-3 px-4 rounded-md font-medium disabled:opacity-50"
                   >
-                    {isSubmitting ? 'Saving...' : 'Save Expense'}
+                    {isSubmitting ? 'Saving...' : 'Save'}
                   </button>
                 </div>
               </form>
@@ -343,55 +355,85 @@ export default function FuelExpenseManager({ vehicles }) {
         )}
         
         <div>
-          <h3 className="text-lg font-medium mb-4">Recent Fuel Expenses</h3>
+          <h3 className="text-lg font-bold mb-4">Recent Expenses</h3>
           
           {loading ? (
-            <p className="text-gray-500">Loading expenses...</p>
+            <div className="py-8 text-center">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-red-600 mx-auto mb-4"></div>
+              <p className="text-gray-500">Loading expenses...</p>
+            </div>
           ) : fuelExpenses.length === 0 ? (
-            <p className="text-gray-500">No fuel expenses recorded yet.</p>
+            <div className="text-center py-8 text-gray-500 border border-dashed border-gray-300 rounded-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+              <p className="mb-1">No fuel expenses recorded yet</p>
+              <p className="text-sm">Tap the Add button to record your first expense</p>
+            </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-white">
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th className="py-3 px-4 text-left">Date</th>
-                    <th className="py-3 px-4 text-left">Vehicle</th>
-                    <th className="py-3 px-4 text-left">Amount</th>
-                    <th className="py-3 px-4 text-left">Quantity</th>
-                    <th className="py-3 px-4 text-left">Price/Unit</th>
-                    <th className="py-3 px-4 text-left">Odometer</th>
-                    <th className="py-3 px-4 text-left">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {fuelExpenses.map((expense) => (
-                    <tr key={expense.id}>
-                      <td className="py-3 px-4">{formatDate(expense.date)}</td>
-                      <td className="py-3 px-4">
-                        {expense.vehicle?.make} {expense.vehicle?.model} ({expense.vehicle?.registrationNumber})
-                      </td>
-                      <td className="py-3 px-4">{formatCurrency(expense.amount)}</td>
-                      <td className="py-3 px-4">
-                        {expense.quantity ? `${expense.quantity} ${expense.fuelType === 'Electric' ? 'kWh' : 'gal'}` : '-'}
-                      </td>
-                      <td className="py-3 px-4">
+            <div className="space-y-4">
+              {fuelExpenses.map((expense) => (
+                <div key={expense.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-bold text-red-600">{formatCurrency(expense.amount)}</span>
+                    <span className="text-sm text-gray-600">{formatDate(expense.date)}</span>
+                  </div>
+                  
+                  <div className="mb-2">
+                    <span className="text-sm text-gray-500">Vehicle:</span>
+                    <span className="ml-2">
+                      {expense.vehicle?.model} ({expense.vehicle?.licensePlate})
+                    </span>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-y-1">
+                    <div className="w-1/2">
+                      <span className="text-sm text-gray-500">Quantity:</span>
+                      <span className="ml-2">
+                        {expense.quantity ? `${expense.quantity} ${expense.fuelType === 'Electric' ? 'kWh' : 'L'}` : '-'}
+                      </span>
+                    </div>
+                    
+                    <div className="w-1/2">
+                      <span className="text-sm text-gray-500">Price/Unit:</span>
+                      <span className="ml-2">
                         {expense.quantity && expense.amount
                           ? formatCurrency(expense.amount / expense.quantity)
                           : '-'}
-                      </td>
-                      <td className="py-3 px-4">{expense.odometerReading}</td>
-                      <td className="py-3 px-4">
-                        <button
-                          onClick={() => handleDeleteExpense(expense.id)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </span>
+                    </div>
+                    
+                    <div className="w-1/2">
+                      <span className="text-sm text-gray-500">Odometer:</span>
+                      <span className="ml-2">{expense.odometerReading} km</span>
+                    </div>
+                    
+                    <div className="w-1/2">
+                      <span className="text-sm text-gray-500">Fuel Type:</span>
+                      <span className="ml-2">{expense.fuelType}</span>
+                    </div>
+                  </div>
+                  
+                  {expense.notes && (
+                    <div className="mt-2 pt-2 border-t border-gray-100">
+                      <span className="text-sm text-gray-500">Notes:</span>
+                      <p className="text-sm mt-1">{expense.notes}</p>
+                    </div>
+                  )}
+                  
+                  <div className="mt-3 pt-3 border-t border-gray-200 flex justify-end">
+                    <button
+                      onClick={() => handleDeleteExpense(expense.id)}
+                      className="text-red-600 hover:text-red-800 text-sm font-medium flex items-center"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
