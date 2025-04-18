@@ -57,7 +57,9 @@ export default async function handler(req, res) {
           endTime,
           endRange,
           status,
-          notes
+          notes,
+          date,
+          startTime
         } = req.body;
 
         // Get the current shift
@@ -88,19 +90,45 @@ export default async function handler(req, res) {
         // Prepare update data
         const updateData = {};
         
-        if (endTime) {
-          // Parse end time
-          const now = new Date();
-          const [hours, minutes] = endTime.split(':').map(Number);
-          const parsedEndTime = new Date(now);
-          parsedEndTime.setHours(hours, minutes, 0, 0);
-          
-          // If end time is before start time, adjust to the next day
-          if (parsedEndTime < currentShift.startTime) {
-            parsedEndTime.setDate(parsedEndTime.getDate() + 1);
+        // Handle date field
+        if (date) {
+          updateData.date = new Date(date);
+        }
+        
+        // Handle start time field
+        if (startTime) {
+          if (typeof startTime === 'string' && startTime.includes(':')) {
+            // It's a time string like "14:30"
+            const [hours, minutes] = startTime.split(':').map(Number);
+            const dateToUse = date ? new Date(date) : new Date(currentShift.date);
+            const parsedStartTime = new Date(dateToUse);
+            parsedStartTime.setHours(hours, minutes, 0, 0);
+            updateData.startTime = parsedStartTime;
+          } else if (startTime instanceof Date || (typeof startTime === 'string' && !isNaN(new Date(startTime).getTime()))) {
+            // It's already a date object or date string
+            updateData.startTime = new Date(startTime);
           }
-          
-          updateData.endTime = parsedEndTime;
+        }
+        
+        if (endTime) {
+          if (typeof endTime === 'string' && endTime.includes(':')) {
+            // It's a time string like "14:30"
+            const [hours, minutes] = endTime.split(':').map(Number);
+            const dateToUse = date ? new Date(date) : new Date(currentShift.date);
+            const parsedEndTime = new Date(dateToUse);
+            parsedEndTime.setHours(hours, minutes, 0, 0);
+            
+            // If end time is before start time, adjust to the next day
+            const startTimeToUse = updateData.startTime || currentShift.startTime;
+            if (parsedEndTime < startTimeToUse) {
+              parsedEndTime.setDate(parsedEndTime.getDate() + 1);
+            }
+            
+            updateData.endTime = parsedEndTime;
+          } else if (endTime instanceof Date || (typeof endTime === 'string' && !isNaN(new Date(endTime).getTime()))) {
+            // It's already a date object or date string
+            updateData.endTime = new Date(endTime);
+          }
         }
         
         if (endRange !== undefined) {
@@ -115,6 +143,8 @@ export default async function handler(req, res) {
           updateData.notes = notes;
         }
 
+        console.log('Updating shift with data:', updateData);
+
         // Update the shift
         const updatedShift = await prisma.shift.update({
           where: { id },
@@ -128,11 +158,30 @@ export default async function handler(req, res) {
                 licensePlate: true,
                 fuelType: true
               }
+            },
+            rides: {
+              select: {
+                id: true,
+                fare: true,
+                tips: true,
+                totalEarned: true
+              }
             }
           }
         });
+        
+        // Calculate total earnings for the shift
+        const totalEarnings = updatedShift.rides.reduce((sum, ride) => {
+          return sum + (parseFloat(ride.totalEarned) || 0);
+        }, 0);
 
-        return res.status(200).json(updatedShift);
+        // Add total earnings to the response
+        const updatedShiftWithEarnings = {
+          ...updatedShift,
+          totalEarnings
+        };
+
+        return res.status(200).json(updatedShiftWithEarnings);
       } catch (error) {
         console.error('Error updating shift:', error);
         return res.status(500).json({ error: 'Failed to update shift' });
