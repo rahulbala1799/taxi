@@ -164,11 +164,65 @@ export default async function handler(req, res) {
                 id: true,
                 fare: true,
                 tips: true,
-                totalEarned: true
+                totalEarned: true,
+                date: true
               }
             }
           }
         });
+        
+        // If date was updated, update all associated rides to have the same date
+        if (date && updatedShift.rides && updatedShift.rides.length > 0) {
+          console.log(`Updating dates for ${updatedShift.rides.length} rides to match shift date`);
+          
+          // Update all associated rides to have the new date
+          await Promise.all(updatedShift.rides.map(ride => 
+            prisma.ride.update({
+              where: { id: ride.id },
+              data: { date: new Date(date) }
+            })
+          ));
+          
+          // Refresh the shift data to include updated rides
+          const refreshedShift = await prisma.shift.findUnique({
+            where: { id },
+            include: {
+              vehicle: {
+                select: {
+                  id: true,
+                  make: true,
+                  model: true,
+                  licensePlate: true,
+                  fuelType: true
+                }
+              },
+              rides: {
+                select: {
+                  id: true,
+                  fare: true,
+                  tips: true,
+                  totalEarned: true,
+                  date: true
+                }
+              }
+            }
+          });
+          
+          if (refreshedShift) {
+            // Calculate total earnings for the shift
+            const totalEarnings = refreshedShift.rides.reduce((sum, ride) => {
+              return sum + (parseFloat(ride.totalEarned) || 0);
+            }, 0);
+            
+            // Add total earnings to the response
+            const refreshedShiftWithEarnings = {
+              ...refreshedShift,
+              totalEarnings
+            };
+            
+            return res.status(200).json(refreshedShiftWithEarnings);
+          }
+        }
         
         // Calculate total earnings for the shift
         const totalEarnings = updatedShift.rides.reduce((sum, ride) => {
