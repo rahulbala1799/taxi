@@ -5,6 +5,14 @@ import { useRouter } from 'next/router'
 export default function Dashboard() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [lifetimeEarnings, setLifetimeEarnings] = useState(0)
+  const [lifetimeRides, setLifetimeRides] = useState(0)
+  const [lifetimeHours, setLifetimeHours] = useState(0)
+  const [lifetimeAvgPerHour, setLifetimeAvgPerHour] = useState(0)
+  const [todayEarnings, setTodayEarnings] = useState(0)
+  const [todayRides, setTodayRides] = useState(0)
+  const [todayHours, setTodayHours] = useState(0)
+  const [todayTips, setTodayTips] = useState(0)
   const router = useRouter()
 
   useEffect(() => {
@@ -20,6 +28,12 @@ export default function Dashboard() {
     try {
       const parsedUser = JSON.parse(userData)
       setUser(parsedUser)
+      
+      if (parsedUser && parsedUser.id) {
+        // Fetch metrics after user is set
+        fetchLifetimeMetrics(parsedUser.id)
+        fetchTodayMetrics(parsedUser.id)
+      }
     } catch (err) {
       console.error('Error parsing user data', err)
       router.push('/login')
@@ -27,6 +41,36 @@ export default function Dashboard() {
       setLoading(false)
     }
   }, [router])
+
+  const fetchLifetimeMetrics = async (userId) => {
+    try {
+      const response = await fetch(`/api/metrics?period=all-time&driverId=${userId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setLifetimeEarnings(data.earnings);
+        setLifetimeRides(data.rides);
+        setLifetimeHours(data.hours);
+        setLifetimeAvgPerHour(data.avgPerHour);
+      }
+    } catch (error) {
+      console.error('Error fetching lifetime metrics:', error);
+    }
+  }
+
+  const fetchTodayMetrics = async (userId) => {
+    try {
+      const response = await fetch(`/api/metrics?period=day&driverId=${userId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setTodayEarnings(data.earnings);
+        setTodayRides(data.rides);
+        setTodayHours(data.hours);
+        setTodayTips(data.tipsPercentage > 0 ? (data.earnings * data.tipsPercentage / 100) : 0);
+      }
+    } catch (error) {
+      console.error('Error fetching today metrics:', error);
+    }
+  }
 
   const handleLogout = () => {
     localStorage.removeItem('user')
@@ -76,14 +120,17 @@ export default function Dashboard() {
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-lg font-bold text-black">Goal Progress</h2>
             <div className="bg-red-600 text-white font-bold px-3 py-1 rounded-md text-sm">
-              €0 / €1,000,000
+              €{lifetimeEarnings.toFixed(2)} / €1,000,000
             </div>
           </div>
           
           <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
-            <div className="bg-red-600 h-3 rounded-full" style={{ width: '0%' }}></div>
+            <div 
+              className="bg-red-600 h-3 rounded-full" 
+              style={{ width: `${Math.min((lifetimeEarnings / 1000000) * 100, 100)}%` }}
+            ></div>
           </div>
-          <p className="text-gray-600 text-xs">0% of your €1M goal completed</p>
+          <p className="text-gray-600 text-xs">{((lifetimeEarnings / 1000000) * 100).toFixed(2)}% of your €1M goal completed</p>
         </div>
         
         {/* Main Navigation Sections */}
@@ -161,19 +208,42 @@ export default function Dashboard() {
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-white p-3 rounded-md">
               <h4 className="text-gray-600 text-xs">Earnings</h4>
-              <p className="text-xl font-bold text-red-600">€0</p>
+              <p className="text-xl font-bold text-red-600">€{todayEarnings.toFixed(2)}</p>
             </div>
             <div className="bg-white p-3 rounded-md">
               <h4 className="text-gray-600 text-xs">Rides</h4>
-              <p className="text-xl font-bold text-black">0</p>
+              <p className="text-xl font-bold text-black">{todayRides}</p>
             </div>
             <div className="bg-white p-3 rounded-md">
               <h4 className="text-gray-600 text-xs">Hours</h4>
-              <p className="text-xl font-bold text-black">0</p>
+              <p className="text-xl font-bold text-black">{todayHours.toFixed(1)}</p>
             </div>
             <div className="bg-white p-3 rounded-md">
               <h4 className="text-gray-600 text-xs">Tips</h4>
-              <p className="text-xl font-bold text-red-600">€0</p>
+              <p className="text-xl font-bold text-red-600">€{todayTips.toFixed(2)}</p>
+            </div>
+          </div>
+        </div>
+        
+        {/* Lifetime Stats */}
+        <div className="bg-red-600 rounded-lg shadow-md p-4 mb-6">
+          <h3 className="text-white font-bold mb-3 text-center">Lifetime Stats</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-white p-3 rounded-md">
+              <h4 className="text-gray-600 text-xs">Total Earnings</h4>
+              <p className="text-xl font-bold text-red-600">€{lifetimeEarnings.toFixed(2)}</p>
+            </div>
+            <div className="bg-white p-3 rounded-md">
+              <h4 className="text-gray-600 text-xs">Total Rides</h4>
+              <p className="text-xl font-bold text-black">{lifetimeRides}</p>
+            </div>
+            <div className="bg-white p-3 rounded-md">
+              <h4 className="text-gray-600 text-xs">Total Hours</h4>
+              <p className="text-xl font-bold text-black">{lifetimeHours.toFixed(1)}</p>
+            </div>
+            <div className="bg-white p-3 rounded-md">
+              <h4 className="text-gray-600 text-xs">Avg/Hour</h4>
+              <p className="text-xl font-bold text-red-600">€{lifetimeAvgPerHour.toFixed(2)}</p>
             </div>
           </div>
         </div>
