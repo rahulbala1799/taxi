@@ -54,24 +54,24 @@ export default function LoginForm() {
 
   return (
     <div className="max-w-md mx-auto">
-      <form onSubmit={handleSubmit} className="bg-gray-900 shadow-xl rounded-lg px-8 pt-6 pb-8 mb-4 border border-gray-800">
-        <h2 className="text-2xl mb-6 text-center font-bold text-white">Access Your Dashboard</h2>
+      <form onSubmit={handleSubmit} className="bg-white shadow-sm rounded-lg px-8 pt-6 pb-8 mb-4 border border-gray-200">
+        <h2 className="text-2xl mb-6 text-center font-bold">Access Your Dashboard</h2>
         
         {error && (
-          <div className="bg-red-900 border border-red-700 text-white px-4 py-3 rounded mb-4">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
             {error}
           </div>
         )}
         
         <div className="mb-4">
-          <label className="block text-red-700 text-sm font-bold mb-2" htmlFor="email">
+          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
             Username or Email
           </label>
           <input
-            className="bg-black shadow appearance-none border border-gray-800 rounded w-full py-3 px-4 text-white leading-tight focus:outline-none focus:border-red-700 focus:ring-1 focus:ring-red-700"
+            className="shadow appearance-none border border-gray-300 rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600"
             id="email"
             type="text"
-            placeholder="Stijoimillion or your email"
+            placeholder="stijoymillion or your email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -79,11 +79,11 @@ export default function LoginForm() {
         </div>
         
         <div className="mb-6">
-          <label className="block text-red-700 text-sm font-bold mb-2" htmlFor="password">
+          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
             Password
           </label>
           <input
-            className="bg-black shadow appearance-none border border-gray-800 rounded w-full py-3 px-4 text-white leading-tight focus:outline-none focus:border-red-700 focus:ring-1 focus:ring-red-700"
+            className="shadow appearance-none border border-gray-300 rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600"
             id="password"
             type="password"
             placeholder="******************"
@@ -92,13 +92,13 @@ export default function LoginForm() {
             required
           />
           <div className="flex justify-end mt-2">
-            <a href="#" className="text-sm text-red-700 hover:text-red-500">Forgot password?</a>
+            <a href="#" className="text-sm text-red-600 hover:text-red-700">Forgot password?</a>
           </div>
         </div>
         
         <div className="flex items-center justify-between">
           <button
-            className="w-full bg-red-700 hover:bg-red-800 text-white font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline transition duration-200"
+            className="w-full bg-black hover:bg-gray-800 text-white font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline transition duration-200"
             type="submit"
             disabled={loading}
           >
