@@ -13,6 +13,7 @@ export default function ManageShift() {
   const [showStartForm, setShowStartForm] = useState(false)
   const [showEndForm, setShowEndForm] = useState(false)
   const [error, setError] = useState('')
+  const [debugInfo, setDebugInfo] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   
   // Edit shift state
@@ -41,19 +42,59 @@ export default function ManageShift() {
   const router = useRouter()
 
   useEffect(() => {
-    if (!user) {
-      setLoading(true)
-      return
+    const checkAuth = async () => {
+      try {
+        if (!user) {
+          console.log('No user found, checking localStorage')
+          // Try to get user data from localStorage
+          const userData = localStorage.getItem('user')
+          if (userData) {
+            console.log('Found user data in localStorage')
+            const parsedUser = JSON.parse(userData)
+            if (parsedUser && parsedUser.id) {
+              console.log('Using user from localStorage:', parsedUser.id)
+              await loadData(parsedUser.id)
+            } else {
+              setError('No valid user found in localStorage')
+              setLoading(false)
+            }
+          } else {
+            // No user data found, show login message
+            setError('Please log in to manage shifts')
+            setLoading(false)
+          }
+          return
+        }
+        
+        // Load data when user is available from auth context
+        if (user && user.id) {
+          console.log('User from auth context:', user.id)
+          await loadData(user.id)
+        }
+      } catch (err) {
+        console.error('Error in auth check:', err)
+        setError('Error checking authentication: ' + err.message)
+        setLoading(false)
+      }
     }
     
-    // Load data when user is available
-    if (user && user.id) {
-      fetchVehicles(user.id)
-      fetchShifts(user.id)
-      checkActiveShift(user.id)
+    checkAuth()
+  }, [user])
+  
+  const loadData = async (userId) => {
+    try {
+      await Promise.all([
+        fetchVehicles(userId),
+        fetchShifts(userId),
+        checkActiveShift(userId)
+      ])
+    } catch (err) {
+      console.error('Error loading data:', err)
+      setError('Error loading data: ' + err.message)
+    } finally {
       setLoading(false)
     }
-  }, [user])
+  }
   
   const fetchVehicles = async (userId) => {
     try {
@@ -73,28 +114,47 @@ export default function ManageShift() {
         }
       } else {
         console.error('Error fetching vehicles:', data.message)
+        setError('Error fetching vehicles: ' + data.message)
       }
     } catch (error) {
       console.error('Error fetching vehicles:', error)
+      setError('Error fetching vehicles: ' + error.message)
+      return Promise.reject(error)
     }
   }
   
   const fetchShifts = async (driverId) => {
     try {
       console.log('Fetching shifts for user:', driverId)
-      const res = await fetch(`/api/shifts?driverId=${driverId}&include=rides`)
-      const data = await res.json()
+      const res = await fetch(`/api/shifts?driverId=${driverId}`)
       
-      if (res.ok) {
-        console.log('Shifts fetched:', data)
-        // Get shifts that are not active (completed or cancelled)
-        const completedShifts = data.filter(shift => shift.status !== 'ACTIVE')
-        setShifts(completedShifts)
-      } else {
-        console.error('Error fetching shifts:', data.message)
+      if (!res.ok) {
+        const errorData = await res.json()
+        console.error('Error fetching shifts:', errorData)
+        setError(`Error fetching shifts: ${errorData.message || res.statusText}`)
+        return Promise.reject(new Error(`Error fetching shifts: ${errorData.message || res.statusText}`))
       }
+      
+      const data = await res.json()
+      console.log('Shifts fetched:', data)
+      setDebugInfo(prev => ({...prev, shifts: data}))
+      
+      // Get shifts that are not active (completed or cancelled)
+      const completedShifts = data.filter(shift => shift.status !== 'ACTIVE')
+      setShifts(completedShifts)
+      
+      // For debugging - count statuses
+      const statuses = {}
+      data.forEach(shift => {
+        statuses[shift.status] = (statuses[shift.status] || 0) + 1
+      })
+      console.log('Shift statuses:', statuses)
+      
+      return Promise.resolve()
     } catch (error) {
       console.error('Error fetching shifts:', error)
+      setError('Error fetching shifts: ' + error.message)
+      return Promise.reject(error)
     }
   }
   
@@ -102,16 +162,29 @@ export default function ManageShift() {
     try {
       console.log('Checking active shift for user:', driverId)
       const res = await fetch(`/api/shifts?driverId=${driverId}&status=ACTIVE`)
-      const data = await res.json()
       
-      if (res.ok && data.length > 0) {
+      if (!res.ok) {
+        const errorData = await res.json()
+        setError(`Error checking active shift: ${errorData.message || res.statusText}`)
+        return Promise.reject(new Error(`Error checking active shift: ${errorData.message || res.statusText}`))
+      }
+      
+      const data = await res.json()
+      setDebugInfo(prev => ({...prev, activeShiftCheck: data}))
+      
+      if (data.length > 0) {
         console.log('Active shift found:', data[0])
         setActiveShift(data[0])
       } else {
+        console.log('No active shift found')
         setActiveShift(null)
       }
+      
+      return Promise.resolve()
     } catch (error) {
       console.error('Error checking active shift:', error)
+      setError('Error checking active shift: ' + error.message)
+      return Promise.reject(error)
     }
   }
   

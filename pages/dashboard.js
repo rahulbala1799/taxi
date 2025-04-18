@@ -168,8 +168,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Display API response data for debugging */}
-      {apiResponseData && (
+      {/* Display API response data for debugging - Hidden in production */}
+      {process.env.NODE_ENV === 'development' && apiResponseData && (
         <div className="bg-gray-100 border border-gray-400 text-gray-700 px-4 py-3 m-4 rounded text-xs overflow-auto max-h-40">
           <p className="font-bold">API Response Data:</p>
           <pre>{JSON.stringify(apiResponseData, null, 2)}</pre>
@@ -301,7 +301,7 @@ export default function Dashboard() {
             </div>
             <div className="bg-white p-3 rounded-md">
               <h4 className="text-gray-600 text-xs">Tips</h4>
-              <p className="text-xl font-bold text-red-600">€{todayTips.toFixed(2)}</p>
+              <p className="text-xl font-bold text-red-600">€{(todayEarnings * (apiResponseData?.today?.tipsPercentage || 0) / 100).toFixed(2)}</p>
             </div>
           </div>
         </div>
