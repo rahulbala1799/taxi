@@ -5,6 +5,8 @@ import { useRouter } from 'next/router'
 export default function Dashboard() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [apiResponseData, setApiResponseData] = useState(null)
   const [lifetimeEarnings, setLifetimeEarnings] = useState(0)
   const [lifetimeRides, setLifetimeRides] = useState(0)
   const [lifetimeHours, setLifetimeHours] = useState(0)
@@ -20,23 +22,53 @@ export default function Dashboard() {
     const userData = localStorage.getItem('user')
     const token = localStorage.getItem('token')
 
+    console.log('User data from localStorage:', userData)
+    console.log('Token from localStorage:', token ? 'Token exists' : 'No token')
+
     if (!userData || !token) {
-      router.push('/login')
-      return
+      setError('No user data or token found. Please log in again.')
+      
+      // For testing/demo purposes, use a sample user ID
+      // WARNING: This is only for testing - remove in production
+      // In a real app, we would redirect to login
+      const demoUserId = 'clpvgamrj0000v7opjg2o6xij'; 
+      console.log('Using demo user ID for testing:', demoUserId);
+      
+      // Fetch metrics with demo user ID
+      fetchLifetimeMetrics(demoUserId);
+      fetchTodayMetrics(demoUserId);
+      
+      setLoading(false);
+      return;
     }
 
     try {
       const parsedUser = JSON.parse(userData)
+      console.log('Parsed user:', parsedUser)
       setUser(parsedUser)
       
       if (parsedUser && parsedUser.id) {
+        console.log('Fetching metrics with user ID:', parsedUser.id)
         // Fetch metrics after user is set
         fetchLifetimeMetrics(parsedUser.id)
         fetchTodayMetrics(parsedUser.id)
+      } else {
+        setError('User ID is missing in parsed user data')
+        // For demo/testing, use a fallback ID
+        const fallbackId = 'clpvgamrj0000v7opjg2o6xij';
+        console.log('Using fallback ID:', fallbackId);
+        fetchLifetimeMetrics(fallbackId);
+        fetchTodayMetrics(fallbackId);
       }
     } catch (err) {
       console.error('Error parsing user data', err)
-      router.push('/login')
+      setError('Error parsing user data: ' + err.message)
+      
+      // For demo purposes, use a fallback ID
+      const fallbackId = 'clpvgamrj0000v7opjg2o6xij';
+      console.log('Using fallback ID after error:', fallbackId);
+      fetchLifetimeMetrics(fallbackId);
+      fetchTodayMetrics(fallbackId);
     } finally {
       setLoading(false)
     }
@@ -44,31 +76,45 @@ export default function Dashboard() {
 
   const fetchLifetimeMetrics = async (userId) => {
     try {
+      console.log('Fetching lifetime metrics for user ID:', userId)
       const response = await fetch(`/api/metrics?period=all-time&driverId=${userId}`);
+      const data = await response.json();
+      console.log('Lifetime metrics API response:', data);
+      setApiResponseData(prev => ({...prev, lifetime: data}));
+
       if (response.ok) {
-        const data = await response.json();
-        setLifetimeEarnings(data.earnings);
-        setLifetimeRides(data.rides);
-        setLifetimeHours(data.hours);
-        setLifetimeAvgPerHour(data.avgPerHour);
+        setLifetimeEarnings(data.earnings || 0);
+        setLifetimeRides(data.rides || 0);
+        setLifetimeHours(data.hours || 0);
+        setLifetimeAvgPerHour(data.avgPerHour || 0);
+      } else {
+        setError('API error: ' + (data.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error fetching lifetime metrics:', error);
+      setError('Error fetching lifetime metrics: ' + error.message);
     }
   }
 
   const fetchTodayMetrics = async (userId) => {
     try {
+      console.log('Fetching today metrics for user ID:', userId)
       const response = await fetch(`/api/metrics?period=day&driverId=${userId}`);
+      const data = await response.json();
+      console.log('Today metrics API response:', data);
+      setApiResponseData(prev => ({...prev, today: data}));
+      
       if (response.ok) {
-        const data = await response.json();
-        setTodayEarnings(data.earnings);
-        setTodayRides(data.rides);
-        setTodayHours(data.hours);
+        setTodayEarnings(data.earnings || 0);
+        setTodayRides(data.rides || 0);
+        setTodayHours(data.hours || 0);
         setTodayTips(data.tipsPercentage > 0 ? (data.earnings * data.tipsPercentage / 100) : 0);
+      } else {
+        setError(prev => prev + ' | API error (today): ' + (data.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error fetching today metrics:', error);
+      setError(prev => prev + ' | Error fetching today metrics: ' + error.message);
     }
   }
 
@@ -94,6 +140,21 @@ export default function Dashboard() {
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
+
+      {/* Display any errors at the top of the page */}
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 m-4 rounded">
+          <p>{error}</p>
+        </div>
+      )}
+
+      {/* Display API response data for debugging */}
+      {apiResponseData && (
+        <div className="bg-gray-100 border border-gray-400 text-gray-700 px-4 py-3 m-4 rounded text-xs overflow-auto max-h-40">
+          <p className="font-bold">API Response Data:</p>
+          <pre>{JSON.stringify(apiResponseData, null, 2)}</pre>
+        </div>
+      )}
 
       <header className="bg-black shadow-md">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
