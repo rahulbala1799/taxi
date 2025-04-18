@@ -24,6 +24,7 @@ export default function FuelExpenseManager({ vehicles }) {
   const [error, setError] = useState('')
   const [selectedVehicleId, setSelectedVehicleId] = useState('')
   const [selectedVehicle, setSelectedVehicle] = useState(null)
+  const [selectedPeriod, setSelectedPeriod] = useState('all-time')
   
   // Form state
   const [expenseForm, setExpenseForm] = useState({
@@ -41,7 +42,7 @@ export default function FuelExpenseManager({ vehicles }) {
     if (user) {
       fetchFuelExpenses()
     }
-  }, [user])
+  }, [user, selectedPeriod])
   
   useEffect(() => {
     if (vehicles.length > 0 && !selectedVehicleId) {
@@ -70,7 +71,55 @@ export default function FuelExpenseManager({ vehicles }) {
   const fetchFuelExpenses = async () => {
     setLoading(true)
     try {
-      const response = await fetch(`/api/expenses/fuel?driverId=${user.id}`)
+      let url = `/api/expenses/fuel?driverId=${user.id}`;
+      
+      // Add vehicle ID filter if selected
+      if (selectedVehicleId) {
+        url += `&vehicleId=${selectedVehicleId}`;
+      }
+      
+      // Add date range based on selected period
+      if (selectedPeriod !== 'all-time') {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const startDate = new Date(today);
+        const endDate = new Date(today);
+        endDate.setHours(23, 59, 59, 999);
+        
+        switch (selectedPeriod) {
+          case 'day':
+            // Already set to today
+            break;
+          case 'week':
+            // Start of current week (Sunday)
+            startDate.setDate(today.getDate() - today.getDay());
+            // End of current week (Saturday)
+            endDate.setDate(startDate.getDate() + 6);
+            endDate.setHours(23, 59, 59, 999);
+            break;
+          case 'month':
+            // Start of current month
+            startDate.setDate(1);
+            // End of current month
+            endDate.setMonth(today.getMonth() + 1, 0);
+            endDate.setHours(23, 59, 59, 999);
+            break;
+          case 'year':
+            // Start of current year
+            startDate.setMonth(0, 1);
+            // End of current year
+            endDate.setFullYear(today.getFullYear(), 11, 31);
+            endDate.setHours(23, 59, 59, 999);
+            break;
+          default:
+            break;
+        }
+        
+        url += `&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
+      }
+      
+      const response = await fetch(url)
       
       if (!response.ok) {
         throw new Error('Failed to fetch fuel expenses')
@@ -195,6 +244,63 @@ export default function FuelExpenseManager({ vehicles }) {
             </div>
           </button>
         )}
+      </div>
+      
+      {/* Filters Row */}
+      <div className="p-4 border-b border-gray-200">
+        {/* Vehicle Selector */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle</label>
+          <select
+            value={selectedVehicleId}
+            onChange={handleVehicleChange}
+            className="p-2 border border-gray-300 rounded focus:ring-red-500 focus:border-red-500 w-full"
+          >
+            <option value="">All Vehicles</option>
+            {vehicles.map(vehicle => (
+              <option key={vehicle.id} value={vehicle.id}>
+                {vehicle.make} {vehicle.model} ({vehicle.licensePlate})
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        {/* Period Selector */}
+        <div>
+          <h3 className="text-sm font-medium text-gray-700 mb-1">Time Period</h3>
+          <div className="grid grid-cols-5 gap-2">
+            <button 
+              className={`${selectedPeriod === 'day' ? 'bg-red-600 text-white' : 'bg-white text-gray-700 border border-gray-300'} py-2 px-3 rounded-md text-sm font-medium`}
+              onClick={() => setSelectedPeriod('day')}
+            >
+              Day
+            </button>
+            <button 
+              className={`${selectedPeriod === 'week' ? 'bg-red-600 text-white' : 'bg-white text-gray-700 border border-gray-300'} py-2 px-3 rounded-md text-sm font-medium`}
+              onClick={() => setSelectedPeriod('week')}
+            >
+              Week
+            </button>
+            <button 
+              className={`${selectedPeriod === 'month' ? 'bg-red-600 text-white' : 'bg-white text-gray-700 border border-gray-300'} py-2 px-3 rounded-md text-sm font-medium`}
+              onClick={() => setSelectedPeriod('month')}
+            >
+              Month
+            </button>
+            <button 
+              className={`${selectedPeriod === 'year' ? 'bg-red-600 text-white' : 'bg-white text-gray-700 border border-gray-300'} py-2 px-3 rounded-md text-sm font-medium`}
+              onClick={() => setSelectedPeriod('year')}
+            >
+              Year
+            </button>
+            <button 
+              className={`${selectedPeriod === 'all-time' ? 'bg-red-600 text-white' : 'bg-white text-gray-700 border border-gray-300'} py-2 px-3 rounded-md text-sm font-medium`}
+              onClick={() => setSelectedPeriod('all-time')}
+            >
+              All-Time
+            </button>
+          </div>
+        </div>
       </div>
       
       {error && (
