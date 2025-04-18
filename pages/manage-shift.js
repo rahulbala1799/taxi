@@ -15,6 +15,15 @@ export default function ManageShift() {
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   
+  // Edit shift state
+  const [showEditForm, setShowEditForm] = useState(false)
+  const [currentShiftToEdit, setCurrentShiftToEdit] = useState(null)
+  
+  // Delete shift state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [currentShiftToDelete, setCurrentShiftToDelete] = useState(null)
+  const [deleteAssociatedRides, setDeleteAssociatedRides] = useState(false)
+  
   // Start shift form state
   const [startForm, setStartForm] = useState({
     vehicleId: '',
@@ -73,7 +82,7 @@ export default function ManageShift() {
   const fetchShifts = async (driverId) => {
     try {
       console.log('Fetching shifts for user:', driverId)
-      const res = await fetch(`/api/shifts?driverId=${driverId}`)
+      const res = await fetch(`/api/shifts?driverId=${driverId}&include=rides`)
       const data = await res.json()
       
       if (res.ok) {
@@ -224,6 +233,153 @@ export default function ManageShift() {
         endTime: format(new Date(), 'HH:mm'),
         endRange: ''
       })
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+  
+  const handleEditShift = (shift) => {
+    setCurrentShiftToEdit(shift)
+    setShowEditForm(true)
+  }
+  
+  const handleDeleteShift = (shift) => {
+    setCurrentShiftToDelete(shift)
+    setDeleteAssociatedRides(false)
+    setShowDeleteConfirm(true)
+  }
+  
+  const confirmDeleteShift = async () => {
+    setIsSubmitting(true)
+    setError('')
+    
+    try {
+      if (!currentShiftToDelete) {
+        throw new Error('No shift selected for deletion')
+      }
+      
+      // First handle associated rides based on user choice
+      if (currentShiftToDelete.rides && currentShiftToDelete.rides.length > 0) {
+        if (deleteAssociatedRides) {
+          // Delete all rides associated with this shift
+          await Promise.all(currentShiftToDelete.rides.map(ride => 
+            fetch(`/api/rides/${ride.id}`, {
+              method: 'DELETE'
+            })
+          ))
+        } else {
+          // Unassign rides from the shift (set shiftId to null)
+          await Promise.all(currentShiftToDelete.rides.map(ride => 
+            fetch(`/api/rides/${ride.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ shiftId: null })
+            })
+          ))
+        }
+      }
+      
+      // Delete the shift
+      const res = await fetch(`/api/shifts/${currentShiftToDelete.id}`, {
+        method: 'DELETE'
+      })
+      
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to delete shift')
+      }
+      
+      // Update shifts list
+      setShifts(shifts.filter(shift => shift.id !== currentShiftToDelete.id))
+      setShowDeleteConfirm(false)
+      setCurrentShiftToDelete(null)
+      
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+  
+  const handleEditSubmit = async (e) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    setError('')
+    
+    try {
+      if (!currentShiftToEdit) {
+        throw new Error('No shift selected for editing')
+      }
+      
+      // Get form data from the event
+      const formData = new FormData(e.target)
+      const data = Object.fromEntries(formData)
+      
+      // Prepare update data
+      const updateData = {
+        notes: data.notes
+      }
+      
+      // Add date if it was changed
+      if (data.date) {
+        updateData.date = new Date(data.date)
+      }
+      
+      // Add times if they were provided
+      if (data.startTime) {
+        // We need the date component from the shift's original startTime
+        const originalStartDate = new Date(currentShiftToEdit.startTime)
+        const [hours, minutes] = data.startTime.split(':').map(Number)
+        
+        const newStartTime = new Date(originalStartDate)
+        newStartTime.setHours(hours, minutes, 0, 0)
+        
+        updateData.startTime = newStartTime
+      }
+      
+      if (data.endTime) {
+        // We need the date component from the shift's original endTime or startTime
+        const baseDate = currentShiftToEdit.endTime 
+          ? new Date(currentShiftToEdit.endTime) 
+          : new Date(currentShiftToEdit.startTime)
+          
+        const [hours, minutes] = data.endTime.split(':').map(Number)
+        
+        const newEndTime = new Date(baseDate)
+        newEndTime.setHours(hours, minutes, 0, 0)
+        
+        // If end time is before start time, adjust to the next day
+        const startTime = new Date(currentShiftToEdit.startTime)
+        if (newEndTime < startTime) {
+          newEndTime.setDate(newEndTime.getDate() + 1)
+        }
+        
+        updateData.endTime = newEndTime
+      }
+      
+      // Update the shift
+      const res = await fetch(`/api/shifts/${currentShiftToEdit.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData)
+      })
+      
+      const updatedShift = await res.json()
+      
+      if (!res.ok) {
+        throw new Error(updatedShift.error || 'Failed to update shift')
+      }
+      
+      // Update shifts list
+      setShifts(shifts.map(shift => 
+        shift.id === updatedShift.id ? { ...shift, ...updatedShift } : shift
+      ))
+      
+      setShowEditForm(false)
+      setCurrentShiftToEdit(null)
+      
     } catch (err) {
       setError(err.message)
     } finally {
@@ -539,9 +695,29 @@ export default function ManageShift() {
                 <div key={shift.id} className="bg-gray-50 p-3 rounded-md border border-gray-200">
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-medium">{formatDate(shift.date)}</span>
-                    <span className="text-sm bg-gray-200 px-2 py-1 rounded-full">
-                      {formatDuration(shift.startTime, shift.endTime)}
-                    </span>
+                    <div className="flex space-x-2">
+                      <span className="text-sm bg-gray-200 px-2 py-1 rounded-full">
+                        {formatDuration(shift.startTime, shift.endTime)}
+                      </span>
+                      <button 
+                        onClick={() => handleEditShift(shift)}
+                        className="text-blue-600 p-1"
+                        aria-label="Edit shift"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteShift(shift)}
+                        className="text-red-600 p-1"
+                        aria-label="Delete shift"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
@@ -600,6 +776,156 @@ export default function ManageShift() {
           </div>
         </div>
       </main>
+
+      {/* Edit Shift Modal */}
+      {showEditForm && currentShiftToEdit && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+            <h2 className="text-lg font-bold mb-4">Edit Shift</h2>
+            
+            {error && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                {error}
+              </div>
+            )}
+            
+            <form onSubmit={handleEditSubmit}>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="date">
+                  Date
+                </label>
+                <input
+                  type="date"
+                  id="date"
+                  name="date"
+                  defaultValue={currentShiftToEdit.date ? format(new Date(currentShiftToEdit.date), 'yyyy-MM-dd') : ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
+                />
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="startTime">
+                  Start Time
+                </label>
+                <input
+                  type="time"
+                  id="startTime"
+                  name="startTime"
+                  defaultValue={currentShiftToEdit.startTime ? format(new Date(currentShiftToEdit.startTime), 'HH:mm') : ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
+                />
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="endTime">
+                  End Time
+                </label>
+                <input
+                  type="time"
+                  id="endTime"
+                  name="endTime"
+                  defaultValue={currentShiftToEdit.endTime ? format(new Date(currentShiftToEdit.endTime), 'HH:mm') : ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
+                />
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="notes">
+                  Notes
+                </label>
+                <textarea
+                  id="notes"
+                  name="notes"
+                  rows="3"
+                  defaultValue={currentShiftToEdit.notes || ''}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
+                  placeholder="Add notes about this shift"
+                ></textarea>
+              </div>
+              
+              <div className="flex justify-end space-x-2 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditForm(false)
+                    setCurrentShiftToEdit(null)
+                  }}
+                  className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && currentShiftToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+            <h2 className="text-lg font-bold mb-2">Delete Shift</h2>
+            <p className="text-gray-600 mb-4">Are you sure you want to delete this shift?</p>
+            
+            {currentShiftToDelete.rides && currentShiftToDelete.rides.length > 0 && (
+              <div className="mb-4">
+                <p className="text-gray-600 mb-2">This shift has {currentShiftToDelete.rides.length} associated ride(s).</p>
+                <div className="flex items-center mb-2">
+                  <input
+                    type="checkbox"
+                    id="deleteRides"
+                    checked={deleteAssociatedRides}
+                    onChange={() => setDeleteAssociatedRides(!deleteAssociatedRides)}
+                    className="h-4 w-4 text-red-600 rounded"
+                  />
+                  <label htmlFor="deleteRides" className="ml-2 text-sm text-gray-700">
+                    Delete associated rides
+                  </label>
+                </div>
+                <p className="text-sm text-gray-500 italic">
+                  {deleteAssociatedRides 
+                    ? "Associated rides will be permanently deleted." 
+                    : "Associated rides will be unassigned from this shift for later reassignment."}
+                </p>
+              </div>
+            )}
+            
+            {error && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                {error}
+              </div>
+            )}
+            
+            <div className="flex justify-end space-x-2 mt-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteConfirm(false)
+                  setCurrentShiftToDelete(null)
+                }}
+                className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteShift}
+                className="bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Deleting...' : 'Delete Shift'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Mobile Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-black border-t border-gray-800 p-3">
