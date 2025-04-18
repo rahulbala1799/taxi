@@ -245,13 +245,20 @@ export default async function handler(req, res) {
       }, 0);
       fuelEfficiency = totalFuel > 0 ? totalDistance / totalFuel : 0;
     }
+    
+    // Calculate per kilometer metrics
+    const earningsPerKm = totalDistance > 0 ? parseFloat((totalEarnings / totalDistance).toFixed(2)) : 0;
+    const costPerKm = totalDistance > 0 ? parseFloat((totalExpenses / totalDistance).toFixed(2)) : 0;
+    const profitPerKm = totalDistance > 0 ? parseFloat(((totalEarnings - totalExpenses) / totalDistance).toFixed(2)) : 0;
 
     // Prepare metrics response
     const metrics = {
       earnings: totalEarnings,
       rides: rides.length,
       hours: parseFloat(totalHours.toFixed(2)),
-      avgPerHour: totalHours > 0 ? parseFloat((totalEarnings / totalHours).toFixed(2)) : 0,
+      avgPerHour: totalHours > 0 
+        ? parseFloat((totalEarnings / Math.max(totalHours, 1)).toFixed(2)) 
+        : 0,
       expenses: totalExpenses,
       fuelExpenses: totalFuelExpenses,
       maintenanceExpenses: totalMaintenanceExpenses,
@@ -261,6 +268,9 @@ export default async function handler(req, res) {
       ridesPerShift: parseFloat(ridesPerShift.toFixed(2)),
       distanceTraveled: parseFloat(totalDistance.toFixed(2)),
       fuelEfficiency: parseFloat(fuelEfficiency.toFixed(2)),
+      earningsPerKm: earningsPerKm,
+      costPerKm: costPerKm,
+      profitPerKm: profitPerKm,
       dateRange: {
         startDate,
         endDate,

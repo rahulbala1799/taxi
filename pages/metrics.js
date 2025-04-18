@@ -29,7 +29,10 @@ export default function Metrics() {
     tipsPercentage: 0,
     ridesPerShift: 0,
     distanceTraveled: 0,
-    fuelEfficiency: 0
+    fuelEfficiency: 0,
+    earningsPerKm: 0,
+    costPerKm: 0,
+    profitPerKm: 0
   })
   
   const router = useRouter()
@@ -65,6 +68,8 @@ export default function Metrics() {
       if (!data.profit) {
         data.profit = data.earnings - data.expenses
       }
+      
+      // We don't need to calculate these as they're now provided by the API
       
       setMetrics(data)
     } catch (error) {
@@ -222,14 +227,25 @@ export default function Metrics() {
         <div className="bg-white rounded-lg shadow-md p-4 mb-6 border border-gray-200">
           <h2 className="text-lg font-bold text-black mb-4">Vehicle Metrics</h2>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 mb-4">
             <div className="bg-white rounded-md p-3 border border-gray-200">
-              <h3 className="text-xs text-gray-500 mb-1">Distance</h3>
+              <h3 className="text-xs text-gray-500 mb-1">Distance Traveled</h3>
               <p className="text-xl font-bold text-black">{metrics.distanceTraveled} km</p>
             </div>
+          </div>
+          
+          <div className="grid grid-cols-3 gap-3">
             <div className="bg-white rounded-md p-3 border border-gray-200">
-              <h3 className="text-xs text-gray-500 mb-1">Fuel Efficiency</h3>
-              <p className="text-xl font-bold text-black">{metrics.fuelEfficiency} mpg</p>
+              <h3 className="text-xs text-gray-500 mb-1">Earnings/km</h3>
+              <p className="text-lg font-bold text-green-600">{formatCurrency(metrics.earningsPerKm)}</p>
+            </div>
+            <div className="bg-white rounded-md p-3 border border-gray-200">
+              <h3 className="text-xs text-gray-500 mb-1">Cost/km</h3>
+              <p className="text-lg font-bold text-red-600">{formatCurrency(metrics.costPerKm)}</p>
+            </div>
+            <div className="bg-white rounded-md p-3 border border-gray-200">
+              <h3 className="text-xs text-gray-500 mb-1">Profit/km</h3>
+              <p className="text-lg font-bold text-black">{formatCurrency(metrics.profitPerKm)}</p>
             </div>
           </div>
         </div>
