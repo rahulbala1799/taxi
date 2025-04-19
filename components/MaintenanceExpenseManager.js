@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../lib/auth'
+import Link from 'next/link'
 
 // Helper functions
 const formatCurrency = (amount) => {
@@ -172,226 +173,109 @@ export default function MaintenanceExpenseManager({ vehicles }) {
   }
   
   return (
-    <div>
-      {/* Vehicle selector */}
-      {vehicles.length > 0 && (
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Select Vehicle
-          </label>
-          <select
-            value={selectedVehicleId}
-            onChange={handleVehicleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
+    <div className="bg-white rounded-xl shadow-lg mb-6 overflow-hidden">
+      {/* Header */}
+      <div className="flex justify-between items-center p-5 bg-gradient-to-r from-yellow-500 to-yellow-600">
+        <h2 className="text-xl font-bold text-white">Maintenance Expenses</h2>
+        {!showAddForm && (
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="bg-white text-yellow-600 py-2 px-4 rounded-full font-medium text-sm shadow-md hover:bg-gray-50 transition-all"
           >
-            {vehicles.map(vehicle => (
-              <option key={vehicle.id} value={vehicle.id}>
-                {vehicle.make} {vehicle.model} ({vehicle.licensePlate})
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-      
-      {/* Add Expense Button */}
-      <div className="mb-6">
-        <button 
-          onClick={() => setShowAddForm(true)}
-          className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-md text-sm transition duration-200 flex items-center justify-center"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-          </svg>
-          Add Maintenance Expense
-        </button>
+            Add Expense
+          </button>
+        )}
       </div>
-      
-      {/* Add Expense Form */}
-      {showAddForm && (
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6 border border-gray-200">
-          <h2 className="text-lg font-bold text-black mb-4">Add Maintenance Expense</h2>
-          
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              {error}
-            </div>
-          )}
-          
-          <form onSubmit={handleAddExpense}>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="date">
-                  Date*
-                </label>
-                <input
-                  type="date"
-                  id="date"
-                  name="date"
-                  value={expenseForm.date}
-                  onChange={handleExpenseChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="amount">
-                  Amount (€)*
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  id="amount"
-                  name="amount"
-                  value={expenseForm.amount}
-                  onChange={handleExpenseChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
-                  required
-                />
-              </div>
-            </div>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="serviceType">
-                Service Type*
-              </label>
-              <select
-                id="serviceType"
-                name="serviceType"
-                value={expenseForm.serviceType}
-                onChange={handleExpenseChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
-                required
-              >
-                <option value="">-- Select Service Type --</option>
-                {serviceTypes.map(type => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
-              </select>
-            </div>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="odometerReading">
-                Odometer Reading
-              </label>
-              <input
-                type="number"
-                id="odometerReading"
-                name="odometerReading"
-                value={expenseForm.odometerReading}
-                onChange={handleExpenseChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
-              />
-            </div>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="notes">
-                Notes
-              </label>
-              <textarea
-                id="notes"
-                name="notes"
-                value={expenseForm.notes}
-                onChange={handleExpenseChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
-                rows="2"
-              ></textarea>
-            </div>
-            
-            <div className="flex justify-center space-x-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAddForm(false)
-                  setError('')
-                }}
-                className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium"
-                disabled={isSubmitting}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? 'Adding...' : 'Add Expense'}
-              </button>
-            </div>
-          </form>
+
+      {/* Filters Row (If needed, similar to FuelExpenseManager) */}
+      {/* <div className="p-4 sm:p-5 bg-gray-50"> ... </div> */}
+
+      {error && (
+        <div className="bg-red-50 px-4 py-3 sm:px-5 text-red-700 mx-4 my-3 rounded-xl border border-red-100 text-sm sm:text-base">
+          {/* Error display */} 
         </div>
       )}
-      
-      {/* Expenses List */}
-      <div className="bg-white rounded-lg shadow-md p-4 mb-6 border border-gray-200">
-        <h2 className="text-lg font-bold text-black mb-4">Recent Maintenance Expenses</h2>
-        
-        {error && !showAddForm && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
+
+      <div className="p-4 sm:p-5">
+        {/* Add Form */} 
+        {showAddForm && (
+          <div className="bg-white p-4 sm:p-5 rounded-xl mb-6 border border-gray-200 shadow-md">
+             {/* Add form JSX */} 
+             <h3 className="text-lg font-bold mb-5 text-center text-gray-800">Add Maintenance Expense</h3>
+             {/* Vehicle Select */} 
+             {/* Form inputs: date, amount, serviceType, odometer, notes */} 
+             {/* Submit/Cancel buttons */} 
           </div>
         )}
-        
-        {loading ? (
-          <div className="text-center py-6">
-            <p className="text-gray-500">Loading expenses...</p>
-          </div>
-        ) : maintenanceExpenses.length === 0 ? (
-          <div className="text-center py-6 text-gray-500">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-2 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-            </svg>
-            <p className="mb-1">No maintenance expenses recorded yet</p>
-            <p className="text-sm">Add your first expense to get started</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {maintenanceExpenses
-              .filter(expense => !selectedVehicleId || expense.vehicleId === selectedVehicleId)
-              .map(expense => (
-              <div key={expense.id} className="bg-gray-50 p-3 rounded-md border border-gray-200">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="font-medium">{formatDate(expense.date)}</span>
-                  <div className="flex space-x-2">
-                    <span className="text-sm bg-gray-200 px-2 py-1 rounded-full">
-                      {expense.vehicle.make} {expense.vehicle.model}
-                    </span>
-                    <button 
-                      onClick={() => handleDeleteExpense(expense.id)}
-                      className="text-red-600 hover:text-red-800"
+
+        <div>
+          <h3 className="text-lg font-bold mb-4 text-gray-800">Recent Maintenance</h3>
+          
+          {loading ? (
+             <div className="py-8 text-center">{/* Loading spinner */}</div>
+          ) : maintenanceExpenses.length === 0 ? (
+            <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+              {/* Empty state message */} 
+               <p>No maintenance expenses recorded.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {maintenanceExpenses.map((expense) => (
+                <Link 
+                  key={expense.id} 
+                  href={`/expenses/${expense.id}?type=maintenance`} 
+                  className="block bg-white rounded-xl p-4 sm:p-5 shadow-md border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200 cursor-pointer"
+                >
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3">
+                    <span className="font-bold text-lg sm:text-xl text-yellow-600 mb-1 sm:mb-0">{formatCurrency(expense.amount)}</span>
+                    <span className="text-xs sm:text-sm bg-gray-100 text-gray-700 py-1 px-2 sm:px-3 rounded-full self-start sm:self-center">{formatDate(expense.date)}</span>
+                  </div>
+
+                  <div className="mb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                    <div className="bg-yellow-50 py-1 px-2 sm:px-3 rounded-lg text-yellow-800 text-sm font-medium mb-1 sm:mb-0 self-start sm:self-center">
+                      {expense.serviceType}
+                    </div>
+                    {expense.vehicle && (
+                      <div className="text-xs sm:text-sm text-gray-600 self-start sm:self-end">
+                        {expense.vehicle.model} ({expense.vehicle.licensePlate})
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Odometer Reading */}
+                  {expense.odometerReading && (
+                    <div className="mb-3 bg-gray-50 p-3 rounded-lg">
+                        <span className="text-xs text-gray-500 uppercase tracking-wide block mb-1">Odometer</span>
+                        <span className="font-medium">{expense.odometerReading} km</span>
+                    </div>
+                  )}
+
+                  {/* Notes */} 
+                  {expense.notes && (
+                    <div className="mb-3 bg-gray-50 p-3 rounded-lg">
+                      <span className="text-xs text-gray-500 uppercase tracking-wide block mb-1">Notes</span>
+                      <p className="text-sm">{expense.notes}</p>
+                    </div>
+                  )}
+                  
+                  <div className="pt-3 flex justify-end">
+                    <button
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        e.preventDefault(); 
+                        handleDeleteExpense(expense.id); 
+                      }}
+                      className="bg-white hover:bg-red-50 text-red-600 py-2 px-3 sm:px-4 rounded-full text-xs sm:text-sm font-medium flex items-center transition-all shadow-sm border border-red-200"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
+                      {/* Delete Icon */}
+                      Delete
                     </button>
                   </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-2 text-sm mb-2">
-                  <div>
-                    <p className="text-xs text-gray-500">Amount</p>
-                    <p className="text-red-600 font-medium">{formatCurrency(expense.amount)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Service Type</p>
-                    <p className="font-medium">{expense.serviceType}</p>
-                  </div>
-                </div>
-                
-                {expense.odometerReading && (
-                  <div className="text-xs text-gray-600 mt-1">
-                    Odometer: {expense.odometerReading} km
-                  </div>
-                )}
-                
-                {expense.notes && (
-                  <div className="text-xs text-gray-600 mt-2 border-t border-gray-200 pt-2">
-                    {expense.notes}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

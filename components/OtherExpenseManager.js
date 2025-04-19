@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../lib/auth'
+import Link from 'next/link'
 
 // Helper functions
 const formatCurrency = (amount) => {
@@ -581,7 +582,11 @@ export default function OtherExpenseManager({ vehicles }) {
           ) : (
             <div className="space-y-4">
               {otherExpenses.map((expense) => (
-                <div key={expense.id} className="bg-white rounded-xl p-4 sm:p-5 shadow-md border border-gray-100">
+                <Link 
+                  key={expense.id} 
+                  href={`/expenses/${expense.id}?type=other`} 
+                  className="block bg-white rounded-xl p-4 sm:p-5 shadow-md border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-200 cursor-pointer"
+                >
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3">
                     <span className="font-bold text-lg sm:text-xl text-blue-600 mb-1 sm:mb-0">{formatCurrency(expense.amount)}</span>
                     <span className="text-xs sm:text-sm bg-gray-100 text-gray-700 py-1 px-2 sm:px-3 rounded-full self-start sm:self-center">{formatDate(expense.date)}</span>
@@ -601,34 +606,29 @@ export default function OtherExpenseManager({ vehicles }) {
                   
                   {expense.receiptImageUrl && (
                     <div className="mb-3">
-                      <a 
-                        href={expense.receiptImageUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="block bg-gray-100 rounded-lg overflow-hidden group"
-                      >
-                        <img 
-                          src={expense.receiptImageUrl} 
-                          alt="Receipt" 
-                          className="w-full h-32 sm:h-40 object-cover object-center transition-transform duration-300 group-hover:scale-105"
-                        />
-                        <div className="p-2 text-center text-xs sm:text-sm text-gray-600 bg-gray-200 group-hover:bg-gray-300 transition-colors">
-                          View Receipt
-                        </div>
-                      </a>
+                      <div className="flex items-center text-sm text-gray-600 bg-gray-100 p-2 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                           <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4V5h12v10zm-4.707-3.293a1 1 0 00-1.414-1.414L9 11.586 7.707 10.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        Receipt Attached
+                      </div>
                     </div>
                   )}
                   
                   {expense.notes && (
                     <div className="mb-3 bg-gray-50 p-3 rounded-lg">
                       <span className="text-xs text-gray-500 uppercase tracking-wide block mb-1">Notes</span>
-                      <p className="text-sm">{expense.notes}</p>
+                      <p className="text-sm truncate">{expense.notes}</p>
                     </div>
                   )}
                   
                   <div className="pt-3 flex justify-end">
                     <button
-                      onClick={() => handleDeleteExpense(expense.id)}
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        e.preventDefault(); 
+                        handleDeleteExpense(expense.id); 
+                      }}
                       className="bg-white hover:bg-red-50 text-red-600 py-2 px-3 sm:px-4 rounded-full text-xs sm:text-sm font-medium flex items-center transition-all shadow-sm border border-red-200"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
@@ -637,7 +637,7 @@ export default function OtherExpenseManager({ vehicles }) {
                       Delete
                     </button>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}
