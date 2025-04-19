@@ -389,6 +389,10 @@ export default function ManageShift() {
         throw new Error('No valid shift selected for editing')
       }
       
+      // Log the shift ID for debugging
+      console.log('Editing shift with ID:', currentShiftToEdit.id);
+      console.log('Shift ID type:', typeof currentShiftToEdit.id);
+      
       // Add this check for user ID
       if (!user || !user.id) {
         throw new Error('You must be logged in to edit shifts')
@@ -407,51 +411,39 @@ export default function ManageShift() {
       
       // Add date if it was changed and valid
       if (data.date && data.date.trim() !== '') {
-        const parsedDate = new Date(data.date);
-        if (isNaN(parsedDate.getTime())) {
-          throw new Error('Invalid date format');
+        try {
+          const parsedDate = new Date(data.date);
+          if (isNaN(parsedDate.getTime())) {
+            throw new Error('Invalid date format');
+          }
+          updateData.date = data.date; // Send the ISO string format
+        } catch (err) {
+          console.error('Date parsing error:', err);
+          throw new Error('Please enter a valid date');
         }
-        updateData.date = parsedDate;
       }
       
       // Add times if they were provided and valid
       if (data.startTime && data.startTime.trim() !== '') {
-        // We need the date component from the shift's original startTime
-        const originalStartDate = new Date(currentShiftToEdit.startTime)
         const [hours, minutes] = data.startTime.split(':').map(Number)
         
-        if (isNaN(hours) || isNaN(minutes)) {
-          throw new Error('Invalid start time format');
+        if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+          throw new Error('Invalid start time format (use HH:MM)');
         }
         
-        const newStartTime = new Date(originalStartDate)
-        newStartTime.setHours(hours, minutes, 0, 0)
-        
-        updateData.startTime = newStartTime
+        // Just send the time string, let the server handle the complex date logic
+        updateData.startTime = data.startTime;
       }
       
       if (data.endTime && data.endTime.trim() !== '') {
-        // We need the date component from the shift's original endTime or startTime
-        const baseDate = currentShiftToEdit.endTime 
-          ? new Date(currentShiftToEdit.endTime) 
-          : new Date(currentShiftToEdit.startTime)
-          
         const [hours, minutes] = data.endTime.split(':').map(Number)
         
-        if (isNaN(hours) || isNaN(minutes)) {
-          throw new Error('Invalid end time format');
+        if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+          throw new Error('Invalid end time format (use HH:MM)');
         }
         
-        const newEndTime = new Date(baseDate)
-        newEndTime.setHours(hours, minutes, 0, 0)
-        
-        // If end time is before start time, adjust to the next day
-        const startTime = updateData.startTime || new Date(currentShiftToEdit.startTime)
-        if (newEndTime < startTime) {
-          newEndTime.setDate(newEndTime.getDate() + 1)
-        }
-        
-        updateData.endTime = newEndTime
+        // Just send the time string, let the server handle the complex date logic
+        updateData.endTime = data.endTime;
       }
       
       console.log('Prepared update data:', updateData);
@@ -472,7 +464,11 @@ export default function ManageShift() {
       console.log('API response data:', responseData);
       
       if (!res.ok) {
-        throw new Error(responseData.error || responseData.details || 'Failed to update shift')
+        const errorMsg = responseData.error || 
+                         responseData.details || 
+                         (responseData.meta ? JSON.stringify(responseData.meta) : null) || 
+                         'Failed to update shift';
+        throw new Error(errorMsg);
       }
       
       // Update shifts list
