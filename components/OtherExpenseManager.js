@@ -195,12 +195,6 @@ export default function OtherExpenseManager({ vehicles }) {
     setError('')
     setIsSubmitting(true)
     
-    if (!selectedVehicleId && vehicles.length > 0) {
-      setError('Please select a vehicle for the expense')
-      setIsSubmitting(false)
-      return
-    }
-    
     if (!expenseForm.amount || isNaN(parseFloat(expenseForm.amount))) {
       setError('Please enter a valid amount')
       setIsSubmitting(false)
@@ -214,29 +208,42 @@ export default function OtherExpenseManager({ vehicles }) {
     }
     
     try {
-      const formData = new FormData()
-      formData.append('driverId', user.id)
-      // Only append vehicleId if one is selected (allowing non-vehicle specific expenses)
-      if (selectedVehicleId) {
-        formData.append('vehicleId', selectedVehicleId)
-      }
-      formData.append('date', expenseForm.date)
-      formData.append('amount', expenseForm.amount)
-      formData.append('category', expenseForm.category)
-      formData.append('notes', expenseForm.notes || '')
-      
-      // Append the image file if it exists
-      if (expenseForm.receiptImage) {
-        formData.append('receiptImage', expenseForm.receiptImage)
-      }
-      
+      // Temporarily send JSON instead of FormData
+      const payload = {
+        driverId: user.id,
+        vehicleId: selectedVehicleId || null, // Send null if no vehicle selected
+        date: expenseForm.date,
+        amount: expenseForm.amount,
+        category: expenseForm.category,
+        notes: expenseForm.notes || '',
+      };
+
+      console.log("[DEBUG] Sending JSON payload:", payload);
+
       const response = await fetch('/api/expenses/other', {
         method: 'POST',
-        body: formData // No need to set Content-Type header for FormData
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
       })
       
       if (!response.ok) {
-        const errorData = await response.json()
+        // Try to get more specific error from response if possible
+        let errorData = { error: `HTTP error! status: ${response.status}` };
+        try {
+          errorData = await response.json(); 
+        } catch (jsonError) {
+          console.error("Could not parse error response as JSON:", jsonError);
+          // Attempt to read response as text if JSON fails
+          try {
+            const errorText = await response.text();
+            errorData.error = errorText || errorData.error; // Use text if available
+            console.error("Error response text:", errorText);
+          } catch (textError) {
+            console.error("Could not read error response as text:", textError);
+          }
+        }
         throw new Error(errorData.error || 'Failed to add expense')
       }
       
@@ -258,7 +265,8 @@ export default function OtherExpenseManager({ vehicles }) {
       
       setShowAddForm(false)
     } catch (err) {
-      console.error('Error adding other expense:', err)
+      console.error('Error adding other expense (JSON test):', err)
+      // Display the actual error message from the API if available
       setError(err.message || 'Failed to add expense. Please try again.')
     } finally {
       setIsSubmitting(false)

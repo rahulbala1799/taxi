@@ -1,37 +1,16 @@
-import { IncomingForm } from 'formidable';
 import { promises as fs } from 'fs';
 import path from 'path';
 import prisma from '../../../../lib/prisma';
 
-// Configure formidable to parse form data
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+// Temporarily disable bodyParser override for debugging
+// export const config = {
+//   api: {
+//     bodyParser: false,
+//   },
+// };
 
-// Helper to parse form data including files
-const parseForm = async (req) => {
-  return new Promise((resolve, reject) => {
-    const form = new IncomingForm({
-      uploadDir: path.join(process.cwd(), 'public/uploads'),
-      keepExtensions: true,
-      maxFileSize: 10 * 1024 * 1024, // 10MB max file size
-    });
-
-    // Ensure upload directory exists
-    try {
-      fs.mkdir(path.join(process.cwd(), 'public/uploads'), { recursive: true });
-    } catch (error) {
-      console.error('Error creating upload directory:', error);
-    }
-
-    form.parse(req, (err, fields, files) => {
-      if (err) return reject(err);
-      resolve({ fields, files });
-    });
-  });
-};
+// Helper to parse form data including files (Temporarily unused)
+// const parseForm = async (req) => { ... };
 
 export default async function handler(req, res) {
   const { method } = req;
@@ -89,9 +68,7 @@ export default async function handler(req, res) {
       
     case 'POST':
       try {
-        // Parse the multipart form data
-        const { fields, files } = await parseForm(req);
-        
+        // Temporarily use req.body directly (assuming JSON)
         const { 
           driverId, 
           vehicleId, 
@@ -99,34 +76,25 @@ export default async function handler(req, res) {
           amount, 
           category, 
           notes 
-        } = fields;
+        } = req.body; // Use req.body instead of fields
         
+        console.log("[DEBUG] Received POST data:", req.body);
+
         // Validate required fields
-        if (!vehicleId || !driverId || !amount || !category) {
+        if (!driverId || !amount || !category) { // Removed vehicleId validation temporarily
           return res.status(400).json({ 
-            error: 'Missing required fields: vehicleId, driverId, amount, and category are required'
+            error: 'Missing required fields: driverId, amount, and category are required'
           });
         }
         
-        // Check if vehicle exists and belongs to driver
-        const vehicle = await prisma.vehicle.findFirst({
-          where: {
-            id: vehicleId,
-            driverId: driverId
-          }
-        });
+        // Temporarily skip vehicle check if vehicleId is optional
+        // if (vehicleId) {
+        //   const vehicle = await prisma.vehicle.findFirst(...);
+        //   if (!vehicle) { ... }
+        // }
         
-        if (!vehicle) {
-          return res.status(400).json({ error: 'Vehicle does not belong to this driver' });
-        }
-        
-        // Process receipt image if provided
+        // Temporarily skip image processing
         let receiptImageUrl = null;
-        if (files.receiptImage) {
-          const file = files.receiptImage;
-          // Generate a relative URL for the uploaded file
-          receiptImageUrl = `/uploads/${path.basename(file.filepath)}`;
-        }
         
         // Parse values properly
         const parseDate = date ? new Date(date) : new Date();
@@ -135,31 +103,31 @@ export default async function handler(req, res) {
         // Create the expense record
         const otherExpense = await prisma.otherExpense.create({
           data: {
-            vehicleId,
+            vehicleId: vehicleId || null, // Allow null vehicleId
             driverId,
             date: parseDate,
             amount: parseAmount,
             category,
             notes: notes || null,
-            receiptImageUrl
+            receiptImageUrl // Will be null for this test
           },
           include: {
-            vehicle: {
+            vehicle: vehicleId ? { // Only include if vehicleId exists
               select: {
                 make: true,
                 model: true,
                 licensePlate: true
               }
-            }
+            } : undefined
           }
         });
         
-        console.log('Other expense created:', otherExpense.id);
+        console.log('Other expense created (JSON test):', otherExpense.id);
         return res.status(201).json(otherExpense);
       } catch (error) {
-        console.error('Error creating other expense:', error);
+        console.error('Error creating other expense (JSON test):', error);
         return res.status(500).json({ 
-          error: 'Failed to create other expense',
+          error: 'Failed to create other expense (JSON test)',
           details: error.message,
           stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
