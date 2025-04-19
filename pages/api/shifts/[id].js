@@ -64,6 +64,13 @@ export default async function handler(req, res) {
 
         console.log('PUT /api/shifts/[id] - Request body:', req.body);
         console.log('Shift ID:', id);
+        console.log('Shift ID type:', typeof id);
+        
+        // Ensure we have a valid ID - this is likely causing the issue
+        if (!id) {
+          console.error('Invalid shift ID provided');
+          return res.status(400).json({ error: 'Invalid shift ID' });
+        }
 
         // Get the current shift
         const currentShift = await prisma.shift.findUnique({
@@ -76,6 +83,15 @@ export default async function handler(req, res) {
         if (!currentShift) {
           console.error('Shift not found with ID:', id);
           return res.status(404).json({ error: 'Shift not found' });
+        }
+
+        // Log complete shift info for debugging
+        console.log('Current shift found:', JSON.stringify(currentShift, null, 2));
+        
+        // Validate the shift belongs to the user making the request if there's a driverId in the body
+        if (req.body.driverId && currentShift.driverId !== req.body.driverId) {
+          console.error('Unauthorized: Shift belongs to a different driver');
+          return res.status(403).json({ error: 'Unauthorized access to this shift' });
         }
 
         console.log('Current shift found:', {

@@ -385,8 +385,13 @@ export default function ManageShift() {
     console.log('Edit shift form submitted', { currentShiftToEdit });
     
     try {
-      if (!currentShiftToEdit) {
-        throw new Error('No shift selected for editing')
+      if (!currentShiftToEdit || !currentShiftToEdit.id) {
+        throw new Error('No valid shift selected for editing')
+      }
+      
+      // Add this check for user ID
+      if (!user || !user.id) {
+        throw new Error('You must be logged in to edit shifts')
       }
       
       // Get form data from the event
@@ -395,21 +400,29 @@ export default function ManageShift() {
       
       console.log('Form data collected:', data);
       
-      // Prepare update data
+      // Prepare update data with more validation
       const updateData = {
-        notes: data.notes
+        notes: data.notes || ''
       }
       
-      // Add date if it was changed
-      if (data.date) {
-        updateData.date = new Date(data.date)
+      // Add date if it was changed and valid
+      if (data.date && data.date.trim() !== '') {
+        const parsedDate = new Date(data.date);
+        if (isNaN(parsedDate.getTime())) {
+          throw new Error('Invalid date format');
+        }
+        updateData.date = parsedDate;
       }
       
-      // Add times if they were provided
-      if (data.startTime) {
+      // Add times if they were provided and valid
+      if (data.startTime && data.startTime.trim() !== '') {
         // We need the date component from the shift's original startTime
         const originalStartDate = new Date(currentShiftToEdit.startTime)
         const [hours, minutes] = data.startTime.split(':').map(Number)
+        
+        if (isNaN(hours) || isNaN(minutes)) {
+          throw new Error('Invalid start time format');
+        }
         
         const newStartTime = new Date(originalStartDate)
         newStartTime.setHours(hours, minutes, 0, 0)
@@ -417,7 +430,7 @@ export default function ManageShift() {
         updateData.startTime = newStartTime
       }
       
-      if (data.endTime) {
+      if (data.endTime && data.endTime.trim() !== '') {
         // We need the date component from the shift's original endTime or startTime
         const baseDate = currentShiftToEdit.endTime 
           ? new Date(currentShiftToEdit.endTime) 
@@ -425,11 +438,15 @@ export default function ManageShift() {
           
         const [hours, minutes] = data.endTime.split(':').map(Number)
         
+        if (isNaN(hours) || isNaN(minutes)) {
+          throw new Error('Invalid end time format');
+        }
+        
         const newEndTime = new Date(baseDate)
         newEndTime.setHours(hours, minutes, 0, 0)
         
         // If end time is before start time, adjust to the next day
-        const startTime = new Date(currentShiftToEdit.startTime)
+        const startTime = updateData.startTime || new Date(currentShiftToEdit.startTime)
         if (newEndTime < startTime) {
           newEndTime.setDate(newEndTime.getDate() + 1)
         }
@@ -439,6 +456,9 @@ export default function ManageShift() {
       
       console.log('Prepared update data:', updateData);
       console.log('API request URL:', `/api/shifts/${currentShiftToEdit.id}`);
+      
+      // Also include driverId for server-side validation
+      updateData.driverId = user.id;
       
       // Update the shift
       const res = await fetch(`/api/shifts/${currentShiftToEdit.id}`, {
@@ -452,7 +472,7 @@ export default function ManageShift() {
       console.log('API response data:', responseData);
       
       if (!res.ok) {
-        throw new Error(responseData.error || 'Failed to update shift')
+        throw new Error(responseData.error || responseData.details || 'Failed to update shift')
       }
       
       // Update shifts list
@@ -465,7 +485,7 @@ export default function ManageShift() {
       
     } catch (err) {
       console.error('Error updating shift:', err);
-      setError(err.message)
+      setError(err.message || 'An error occurred while updating the shift')
     } finally {
       setIsSubmitting(false)
     }
