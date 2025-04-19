@@ -563,7 +563,7 @@ export default function OtherExpenseManager({ vehicles }) {
           </div>
         )}
         
-        <div>
+        <div className={`${showAddForm ? 'mt-6' : ''}`}> 
           <h3 className="text-lg font-bold mb-4 text-gray-800">Recent Tax Deductible Expenses</h3>
           
           {loading ? (

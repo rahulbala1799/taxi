@@ -315,9 +315,10 @@ export default function FuelExpenseManager({ vehicles }) {
         </div>
       )}
       
-      <div className="p-5">
+      <div className="p-4 sm:p-5">
+        {/* Add Form */}
         {showAddForm && (
-          <div className="bg-white p-5 rounded-xl mb-6 border border-gray-200 shadow-md">
+          <div className="bg-white p-4 sm:p-5 rounded-xl mb-6 border border-gray-200 shadow-md">
             <h3 className="text-lg font-bold mb-5 text-center text-gray-800">Add Fuel Expense</h3>
             
             <div className="mb-5">
@@ -466,7 +467,8 @@ export default function FuelExpenseManager({ vehicles }) {
           </div>
         )}
         
-        <div>
+        {/* Expense List Section */}
+        <div className={`${showAddForm ? 'mt-6' : ''}`}> 
           <h3 className="text-lg font-bold mb-4 text-gray-800">Recent Expenses</h3>
           
           {loading ? (
