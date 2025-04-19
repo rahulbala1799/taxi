@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../lib/auth'
 
 // Helper functions
@@ -15,63 +15,68 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString('en-IE', options)
 }
 
-export default function FuelExpenseManager({ vehicles }) {
+export default function OtherExpenseManager({ vehicles }) {
   const { user } = useAuth()
-  const [fuelExpenses, setFuelExpenses] = useState([])
+  const [otherExpenses, setOtherExpenses] = useState([])
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [selectedVehicleId, setSelectedVehicleId] = useState('')
-  const [selectedVehicle, setSelectedVehicle] = useState(null)
   const [selectedPeriod, setSelectedPeriod] = useState('all-time')
+  const fileInputRef = useRef(null)
+  const [imagePreview, setImagePreview] = useState(null)
+  
+  // Tax-deductible expense categories for taxi drivers
+  const expenseCategories = [
+    'Car Wash',
+    'Parking Fees',
+    'Tolls',
+    'Telephone & Internet',
+    'Taxi License Fees',
+    'Driver Permits',
+    'Vehicle Registration',
+    'Professional Memberships',
+    'Taxi Meter Certification',
+    'Taxi Roof Sign',
+    'Personal Protective Equipment',
+    'Dispatch System Fees',
+    'Office Supplies',
+    'Bank Charges',
+    'Accounting Fees',
+    'Other'
+  ]
   
   // Form state
   const [expenseForm, setExpenseForm] = useState({
     vehicleId: '',
     date: new Date().toISOString().slice(0, 10),
     amount: '',
-    quantity: '',
-    fuelType: 'Petrol',
-    odometerReading: '',
-    fullTank: true,
+    category: '',
+    receiptImage: null,
     notes: ''
   })
   
   useEffect(() => {
     if (user) {
-      fetchFuelExpenses()
+      fetchOtherExpenses()
     }
   }, [user, selectedPeriod])
   
   useEffect(() => {
     if (vehicles.length > 0 && !selectedVehicleId) {
       setSelectedVehicleId(vehicles[0].id)
-      setSelectedVehicle(vehicles[0])
       setExpenseForm(prev => ({
         ...prev,
-        vehicleId: vehicles[0].id,
-        fuelType: vehicles[0].fuelType || 'Petrol'
+        vehicleId: vehicles[0].id
       }))
     }
   }, [vehicles])
   
-  useEffect(() => {
-    if (selectedVehicleId && showAddForm) {
-      const vehicle = vehicles.find(v => v.id === selectedVehicleId)
-      setSelectedVehicle(vehicle)
-      setExpenseForm(prev => ({
-        ...prev,
-        vehicleId: selectedVehicleId,
-        fuelType: vehicle?.fuelType || 'Petrol'
-      }))
-    }
-  }, [selectedVehicleId, showAddForm, vehicles])
-  
-  const fetchFuelExpenses = async () => {
+  const fetchOtherExpenses = async () => {
     setLoading(true)
     try {
-      let url = `/api/expenses/fuel?driverId=${user.id}`;
+      let url = `/api/expenses/other?driverId=${user.id}`;
       
       // Add vehicle ID filter if selected
       if (selectedVehicleId) {
@@ -122,29 +127,64 @@ export default function FuelExpenseManager({ vehicles }) {
       const response = await fetch(url)
       
       if (!response.ok) {
-        throw new Error('Failed to fetch fuel expenses')
+        throw new Error('Failed to fetch other expenses')
       }
       
       const data = await response.json()
-      setFuelExpenses(data)
+      setOtherExpenses(data)
     } catch (err) {
-      console.error('Error fetching fuel expenses:', err)
-      setError('Failed to load fuel expenses. Please try again.')
+      console.error('Error fetching other expenses:', err)
+      setError('Failed to load expenses. Please try again.')
     } finally {
       setLoading(false)
     }
   }
   
   const handleExpenseChange = (e) => {
-    const { name, value, type, checked } = e.target
+    const { name, value, type } = e.target
     setExpenseForm(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: value
     }))
   }
   
   const handleVehicleChange = (e) => {
     setSelectedVehicleId(e.target.value)
+  }
+  
+  const handleImageChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      // Set the receipt image file to the form state
+      setExpenseForm(prev => ({
+        ...prev,
+        receiptImage: file
+      }))
+      
+      // Create a preview
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImagePreview(reader.result)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+  
+  const handleCameraCapture = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click()
+    }
+  }
+  
+  const handleClearImage = () => {
+    setExpenseForm(prev => ({
+      ...prev,
+      receiptImage: null
+    }))
+    setImagePreview(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
   
   const handleSubmit = async (e) => {
@@ -164,16 +204,29 @@ export default function FuelExpenseManager({ vehicles }) {
       return
     }
     
+    if (!expenseForm.category) {
+      setError('Please select an expense category')
+      setIsSubmitting(false)
+      return
+    }
+    
     try {
-      const response = await fetch('/api/expenses/fuel', {
+      const formData = new FormData()
+      formData.append('driverId', user.id)
+      formData.append('vehicleId', expenseForm.vehicleId)
+      formData.append('date', expenseForm.date)
+      formData.append('amount', expenseForm.amount)
+      formData.append('category', expenseForm.category)
+      formData.append('notes', expenseForm.notes || '')
+      
+      // Append the image file if it exists
+      if (expenseForm.receiptImage) {
+        formData.append('receiptImage', expenseForm.receiptImage)
+      }
+      
+      const response = await fetch('/api/expenses/other', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ...expenseForm,
-          driverId: user.id
-        })
+        body: formData // No need to set Content-Type header for FormData
       })
       
       if (!response.ok) {
@@ -183,22 +236,22 @@ export default function FuelExpenseManager({ vehicles }) {
       
       const newExpense = await response.json()
       
-      setFuelExpenses(prev => [newExpense, ...prev])
+      setOtherExpenses(prev => [newExpense, ...prev])
       
+      // Reset form
       setExpenseForm({
         vehicleId: selectedVehicleId,
         date: new Date().toISOString().slice(0, 10),
         amount: '',
-        quantity: '',
-        fuelType: vehicles.find(v => v.id === selectedVehicleId)?.fuelType || 'Petrol',
-        odometerReading: '',
-        fullTank: true,
+        category: '',
+        receiptImage: null,
         notes: ''
       })
+      setImagePreview(null)
       
       setShowAddForm(false)
     } catch (err) {
-      console.error('Error adding fuel expense:', err)
+      console.error('Error adding other expense:', err)
       setError(err.message || 'Failed to add expense. Please try again.')
     } finally {
       setIsSubmitting(false)
@@ -211,7 +264,7 @@ export default function FuelExpenseManager({ vehicles }) {
     }
     
     try {
-      const response = await fetch(`/api/expenses/fuel/${id}`, {
+      const response = await fetch(`/api/expenses/other/${id}`, {
         method: 'DELETE'
       })
       
@@ -219,21 +272,21 @@ export default function FuelExpenseManager({ vehicles }) {
         throw new Error('Failed to delete expense')
       }
       
-      setFuelExpenses(prev => prev.filter(expense => expense.id !== id))
+      setOtherExpenses(prev => prev.filter(expense => expense.id !== id))
     } catch (err) {
-      console.error('Error deleting fuel expense:', err)
+      console.error('Error deleting other expense:', err)
       setError('Failed to delete expense. Please try again.')
     }
   }
   
   return (
     <div className="bg-white rounded-xl shadow-lg mb-6 overflow-hidden">
-      <div className="flex justify-between items-center p-5 bg-gradient-to-r from-red-600 to-red-700">
-        <h2 className="text-xl font-bold text-white">Fuel Expenses</h2>
+      <div className="flex justify-between items-center p-5 bg-gradient-to-r from-blue-600 to-blue-700">
+        <h2 className="text-xl font-bold text-white">Other Expenses</h2>
         {!showAddForm && (
           <button
             onClick={() => setShowAddForm(true)}
-            className="bg-white text-red-600 py-2 px-4 rounded-full font-medium text-sm shadow-md hover:bg-gray-50 transition-all"
+            className="bg-white text-blue-600 py-2 px-4 rounded-full font-medium text-sm shadow-md hover:bg-gray-50 transition-all"
             aria-label="Add Expense"
           >
             <div className="flex items-center">
@@ -254,7 +307,7 @@ export default function FuelExpenseManager({ vehicles }) {
           <select
             value={selectedVehicleId}
             onChange={handleVehicleChange}
-            className="p-3 border border-gray-300 rounded-xl focus:ring-red-500 focus:border-red-500 w-full bg-white shadow-sm text-base"
+            className="p-3 border border-gray-300 rounded-xl focus:ring-blue-500 focus:border-blue-500 w-full bg-white shadow-sm text-base"
           >
             <option value="">All Vehicles</option>
             {vehicles.map(vehicle => (
@@ -270,31 +323,31 @@ export default function FuelExpenseManager({ vehicles }) {
           <h3 className="text-sm font-medium text-gray-700 mb-2">Time Period</h3>
           <div className="flex overflow-x-auto py-1 space-x-2 -mx-1">
             <button 
-              className={`${selectedPeriod === 'day' ? 'bg-red-600 text-white' : 'bg-white text-gray-700'} py-2 px-4 rounded-full text-sm font-medium shadow-sm flex-shrink-0 transition-all`}
+              className={`${selectedPeriod === 'day' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'} py-2 px-4 rounded-full text-sm font-medium shadow-sm flex-shrink-0 transition-all`}
               onClick={() => setSelectedPeriod('day')}
             >
               Today
             </button>
             <button 
-              className={`${selectedPeriod === 'week' ? 'bg-red-600 text-white' : 'bg-white text-gray-700'} py-2 px-4 rounded-full text-sm font-medium shadow-sm flex-shrink-0 transition-all`}
+              className={`${selectedPeriod === 'week' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'} py-2 px-4 rounded-full text-sm font-medium shadow-sm flex-shrink-0 transition-all`}
               onClick={() => setSelectedPeriod('week')}
             >
               This Week
             </button>
             <button 
-              className={`${selectedPeriod === 'month' ? 'bg-red-600 text-white' : 'bg-white text-gray-700'} py-2 px-4 rounded-full text-sm font-medium shadow-sm flex-shrink-0 transition-all`}
+              className={`${selectedPeriod === 'month' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'} py-2 px-4 rounded-full text-sm font-medium shadow-sm flex-shrink-0 transition-all`}
               onClick={() => setSelectedPeriod('month')}
             >
               This Month
             </button>
             <button 
-              className={`${selectedPeriod === 'year' ? 'bg-red-600 text-white' : 'bg-white text-gray-700'} py-2 px-4 rounded-full text-sm font-medium shadow-sm flex-shrink-0 transition-all`}
+              className={`${selectedPeriod === 'year' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'} py-2 px-4 rounded-full text-sm font-medium shadow-sm flex-shrink-0 transition-all`}
               onClick={() => setSelectedPeriod('year')}
             >
               This Year
             </button>
             <button 
-              className={`${selectedPeriod === 'all-time' ? 'bg-red-600 text-white' : 'bg-white text-gray-700'} py-2 px-4 rounded-full text-sm font-medium shadow-sm flex-shrink-0 transition-all`}
+              className={`${selectedPeriod === 'all-time' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'} py-2 px-4 rounded-full text-sm font-medium shadow-sm flex-shrink-0 transition-all`}
               onClick={() => setSelectedPeriod('all-time')}
             >
               All Time
@@ -317,13 +370,13 @@ export default function FuelExpenseManager({ vehicles }) {
       <div className="p-5">
         {showAddForm && (
           <div className="bg-white p-5 rounded-xl mb-6 border border-gray-200 shadow-md">
-            <h3 className="text-lg font-bold mb-5 text-center text-gray-800">Add Fuel Expense</h3>
+            <h3 className="text-lg font-bold mb-5 text-center text-gray-800">Add Tax Deductible Expense</h3>
             
             <div className="mb-5">
               <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="vehicle">Vehicle</label>
               <select
                 id="vehicle"
-                className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 text-base shadow-sm"
+                className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-base shadow-sm"
                 value={selectedVehicleId}
                 onChange={(e) => setSelectedVehicleId(e.target.value)}
               >
@@ -340,6 +393,25 @@ export default function FuelExpenseManager({ vehicles }) {
               <form onSubmit={handleSubmit}>
                 <div className="space-y-4">
                   <div>
+                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="category">Expense Category</label>
+                    <select
+                      id="category"
+                      name="category"
+                      value={expenseForm.category}
+                      onChange={handleExpenseChange}
+                      className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-base shadow-sm"
+                      required
+                    >
+                      <option value="">-- Select Category --</option>
+                      {expenseCategories.map(category => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div>
                     <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="date">Date</label>
                     <input
                       type="date"
@@ -347,7 +419,7 @@ export default function FuelExpenseManager({ vehicles }) {
                       name="date"
                       value={expenseForm.date}
                       onChange={handleExpenseChange}
-                      className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 text-base shadow-sm"
+                      className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-base shadow-sm"
                       required
                     />
                   </div>
@@ -361,72 +433,69 @@ export default function FuelExpenseManager({ vehicles }) {
                       value={expenseForm.amount}
                       onChange={handleExpenseChange}
                       step="0.01"
-                      className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 text-base shadow-sm"
+                      className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-base shadow-sm"
                       placeholder="0.00"
                       required
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="fuelType">Fuel Type</label>
-                    <select
-                      id="fuelType"
-                      name="fuelType"
-                      value={expenseForm.fuelType}
-                      onChange={handleExpenseChange}
-                      className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 text-base shadow-sm"
-                    >
-                      <option value="Petrol">Petrol</option>
-                      <option value="Diesel">Diesel</option>
-                      <option value="Electric">Electric</option>
-                      <option value="Hybrid">Hybrid</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="quantity">
-                      {expenseForm.fuelType === 'Electric' ? 'kWh' : 'Liters'}
-                    </label>
-                    <input
-                      type="number"
-                      id="quantity"
-                      name="quantity"
-                      value={expenseForm.quantity}
-                      onChange={handleExpenseChange}
-                      step="0.01"
-                      className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 text-base shadow-sm"
-                      placeholder="0.00"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="odometerReading">Odometer Reading</label>
-                    <input
-                      type="number"
-                      id="odometerReading"
-                      name="odometerReading"
-                      value={expenseForm.odometerReading}
-                      onChange={handleExpenseChange}
-                      className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 text-base shadow-sm"
-                      placeholder="Enter km"
-                      required
-                    />
-                  </div>
-                  
-                  <div className="p-3 bg-gray-50 rounded-xl">
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        name="fullTank"
-                        checked={expenseForm.fullTank}
-                        onChange={handleExpenseChange}
-                        className="h-5 w-5 text-red-600 mr-3 rounded"
-                      />
-                      <span className="text-gray-700 text-base">
-                        {expenseForm.fuelType === 'Electric' ? 'Full Charge' : 'Full Tank'}
-                      </span>
-                    </label>
+                    <label className="block text-gray-700 text-sm font-bold mb-2">Receipt Image</label>
+                    <div className="mt-1 flex flex-col items-center">
+                      {imagePreview ? (
+                        <div className="relative">
+                          <img 
+                            src={imagePreview} 
+                            alt="Receipt preview" 
+                            className="w-full max-w-xs rounded-lg mb-2 border border-gray-200" 
+                          />
+                          <button
+                            type="button"
+                            onClick={handleClearImage}
+                            className="absolute top-2 right-2 bg-red-500 p-1 rounded-full text-white shadow-md"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex">
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            className="hidden"
+                            accept="image/*"
+                            capture="environment"
+                            onChange={handleImageChange}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current.click()}
+                            className="bg-gray-100 hover:bg-gray-200 py-3 px-4 rounded-xl text-gray-700 font-medium flex items-center mr-2 shadow-sm"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M5.5 13a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 13H11V9.413l1.293 1.293a1 1 0 001.414-1.414l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13H5.5z" />
+                              <path d="M9 13h2v5a1 1 0 11-2 0v-5z" />
+                            </svg>
+                            Upload File
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleCameraCapture}
+                            className="bg-gray-100 hover:bg-gray-200 py-3 px-4 rounded-xl text-gray-700 font-medium flex items-center shadow-sm"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                            </svg>
+                            Take Photo
+                          </button>
+                        </div>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">
+                        Upload a clear photo of your receipt for tax purposes
+                      </p>
+                    </div>
                   </div>
                   
                   <div>
@@ -436,9 +505,9 @@ export default function FuelExpenseManager({ vehicles }) {
                       name="notes"
                       value={expenseForm.notes}
                       onChange={handleExpenseChange}
-                      className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 text-base shadow-sm"
+                      className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-base shadow-sm"
                       rows="2"
-                      placeholder="Add any notes here"
+                      placeholder="Add any additional information"
                     ></textarea>
                   </div>
                 </div>
@@ -446,7 +515,14 @@ export default function FuelExpenseManager({ vehicles }) {
                 <div className="flex space-x-3 mt-6">
                   <button
                     type="button"
-                    onClick={() => setShowAddForm(false)}
+                    onClick={() => {
+                      setShowAddForm(false)
+                      setImagePreview(null)
+                      setExpenseForm({
+                        ...expenseForm,
+                        receiptImage: null
+                      })
+                    }}
                     className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 px-4 rounded-xl font-medium transition-all"
                     disabled={isSubmitting}
                   >
@@ -455,7 +531,7 @@ export default function FuelExpenseManager({ vehicles }) {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-xl font-medium disabled:opacity-50 transition-all shadow-sm"
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-xl font-medium disabled:opacity-50 transition-all shadow-sm"
                   >
                     {isSubmitting ? 'Saving...' : 'Save Expense'}
                   </button>
@@ -466,64 +542,61 @@ export default function FuelExpenseManager({ vehicles }) {
         )}
         
         <div>
-          <h3 className="text-lg font-bold mb-4 text-gray-800">Recent Expenses</h3>
+          <h3 className="text-lg font-bold mb-4 text-gray-800">Recent Tax Deductible Expenses</h3>
           
           {loading ? (
             <div className="py-8 text-center">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-red-600 mx-auto mb-4"></div>
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4"></div>
               <p className="text-gray-500">Loading expenses...</p>
             </div>
-          ) : fuelExpenses.length === 0 ? (
+          ) : otherExpenses.length === 0 ? (
             <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-300">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto mb-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2z" />
               </svg>
-              <p className="mb-1 text-gray-700 font-medium">No fuel expenses recorded</p>
+              <p className="mb-1 text-gray-700 font-medium">No expenses recorded</p>
               <p className="text-sm text-gray-500">Tap the Add Expense button to record your first expense</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {fuelExpenses.map((expense) => (
+              {otherExpenses.map((expense) => (
                 <div key={expense.id} className="bg-white rounded-xl p-5 shadow-md border border-gray-100">
                   <div className="flex justify-between items-center mb-3">
-                    <span className="font-bold text-xl text-red-600">{formatCurrency(expense.amount)}</span>
+                    <span className="font-bold text-xl text-blue-600">{formatCurrency(expense.amount)}</span>
                     <span className="text-sm bg-gray-100 text-gray-700 py-1 px-3 rounded-full">{formatDate(expense.date)}</span>
                   </div>
                   
-                  <div className="mb-3 bg-gray-50 py-2 px-3 rounded-lg">
-                    <span className="text-xs text-gray-500 uppercase tracking-wide block mb-1">Vehicle</span>
-                    <div className="font-medium mt-1">
-                      {expense.vehicle?.model} ({expense.vehicle?.licensePlate})
+                  <div className="mb-3 flex justify-between">
+                    <div className="bg-blue-50 py-1 px-3 rounded-lg text-blue-800 text-sm font-medium">
+                      {expense.category}
                     </div>
+                    
+                    {expense.vehicle && (
+                      <div className="text-sm text-gray-600">
+                        {expense.vehicle.model} ({expense.vehicle.licensePlate})
+                      </div>
+                    )}
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-3 mb-3">
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <span className="text-xs text-gray-500 uppercase tracking-wide block mb-1">Quantity</span>
-                      <span className="font-medium">
-                        {expense.quantity ? `${expense.quantity} ${expense.fuelType === 'Electric' ? 'kWh' : 'L'}` : '-'}
-                      </span>
+                  {expense.receiptImageUrl && (
+                    <div className="mb-3">
+                      <a 
+                        href={expense.receiptImageUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="block bg-gray-100 rounded-lg overflow-hidden"
+                      >
+                        <img 
+                          src={expense.receiptImageUrl} 
+                          alt="Receipt" 
+                          className="w-full h-32 object-cover object-center"
+                        />
+                        <div className="p-2 text-center text-sm text-gray-600">
+                          View Receipt
+                        </div>
+                      </a>
                     </div>
-                    
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <span className="text-xs text-gray-500 uppercase tracking-wide block mb-1">Price/Unit</span>
-                      <span className="font-medium">
-                        {expense.quantity && expense.amount
-                          ? formatCurrency(expense.amount / expense.quantity)
-                          : '-'}
-                      </span>
-                    </div>
-                    
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <span className="text-xs text-gray-500 uppercase tracking-wide block mb-1">Odometer</span>
-                      <span className="font-medium">{expense.odometerReading} km</span>
-                    </div>
-                    
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <span className="text-xs text-gray-500 uppercase tracking-wide block mb-1">Fuel Type</span>
-                      <span className="font-medium">{expense.fuelType}</span>
-                    </div>
-                  </div>
+                  )}
                   
                   {expense.notes && (
                     <div className="mb-3 bg-gray-50 p-3 rounded-lg">

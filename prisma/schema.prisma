@@ -149,15 +149,16 @@ model InsuranceExpense {
 }
 
 model OtherExpense {
-  id        String   @id @default(uuid())
-  date      DateTime @default(now())
-  amount    Float
-  category  String
-  vehicleId String?
-  driverId  String
-  notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  driver    User     @relation(fields: [driverId], references: [id])
-  vehicle   Vehicle? @relation(fields: [vehicleId], references: [id])
+  id              String   @id @default(uuid())
+  date            DateTime @default(now())
+  amount          Float
+  category        String
+  vehicleId       String?
+  driverId        String
+  notes           String?
+  receiptImageUrl String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  driver          User     @relation(fields: [driverId], references: [id])
+  vehicle         Vehicle? @relation(fields: [vehicleId], references: [id])
 }

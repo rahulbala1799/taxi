@@ -1,8 +1,14 @@
+import { promises as fs } from 'fs';
+import path from 'path';
 import prisma from '../../../../lib/prisma';
 
 export default async function handler(req, res) {
-  const { id } = req.query;
   const { method } = req;
+  const { id } = req.query;
+
+  if (!id) {
+    return res.status(400).json({ error: 'Expense ID is required' });
+  }
 
   switch (method) {
     case 'GET':
@@ -22,103 +28,51 @@ export default async function handler(req, res) {
         });
 
         if (!otherExpense) {
-          return res.status(404).json({ error: 'Other expense not found' });
+          return res.status(404).json({ error: 'Expense not found' });
         }
 
         return res.status(200).json(otherExpense);
       } catch (error) {
         console.error('Error fetching other expense:', error);
-        return res.status(500).json({ error: 'Failed to fetch other expense' });
-      }
-
-    case 'PUT':
-      try {
-        const { 
-          vehicleId,
-          date,
-          amount,
-          category,
-          notes
-        } = req.body;
-
-        // Check if other expense exists
-        const existingExpense = await prisma.otherExpense.findUnique({
-          where: { id },
-          select: { driverId: true, vehicleId: true }
-        });
-
-        if (!existingExpense) {
-          return res.status(404).json({ error: 'Other expense not found' });
-        }
-
-        // Create update data object
-        const updateData = {};
-        
-        if (date) updateData.date = new Date(date);
-        if (amount !== undefined) updateData.amount = parseFloat(amount);
-        if (category) updateData.category = category;
-        if (vehicleId !== undefined) updateData.vehicleId = vehicleId || null;
-        if (notes !== undefined) updateData.notes = notes;
-
-        // If vehicleId is provided, check if it belongs to the driver
-        if (vehicleId) {
-          const vehicle = await prisma.vehicle.findFirst({
-            where: {
-              id: vehicleId,
-              driverId: existingExpense.driverId
-            }
-          });
-          
-          if (!vehicle) {
-            return res.status(400).json({ error: 'Vehicle not found or does not belong to the driver' });
-          }
-        }
-
-        // Update other expense
-        const updatedOtherExpense = await prisma.otherExpense.update({
-          where: { id },
-          data: updateData,
-          include: {
-            vehicle: {
-              select: {
-                make: true,
-                model: true,
-                licensePlate: true
-              }
-            }
-          }
-        });
-
-        return res.status(200).json(updatedOtherExpense);
-      } catch (error) {
-        console.error('Error updating other expense:', error);
-        return res.status(500).json({ error: 'Failed to update other expense' });
+        return res.status(500).json({ error: 'Failed to fetch expense' });
       }
 
     case 'DELETE':
       try {
-        // Check if other expense exists
+        // Check if the expense exists
         const existingExpense = await prisma.otherExpense.findUnique({
           where: { id }
         });
 
         if (!existingExpense) {
-          return res.status(404).json({ error: 'Other expense not found' });
+          return res.status(404).json({ error: 'Expense not found' });
         }
 
-        // Delete other expense
+        // If there is a receipt image, delete the file
+        if (existingExpense.receiptImageUrl) {
+          try {
+            const filePath = path.join(process.cwd(), 'public', existingExpense.receiptImageUrl);
+            await fs.unlink(filePath);
+            console.log(`Deleted file: ${filePath}`);
+          } catch (fileError) {
+            console.error('Error deleting file:', fileError);
+            // Continue with deletion even if file removal fails
+          }
+        }
+
+        // Delete the expense record
         await prisma.otherExpense.delete({
           where: { id }
         });
 
-        return res.status(200).json({ message: 'Other expense deleted successfully' });
+        return res.status(200).json({ message: 'Expense deleted successfully' });
       } catch (error) {
         console.error('Error deleting other expense:', error);
-        return res.status(500).json({ error: 'Failed to delete other expense' });
+        return res.status(500).json({ error: 'Failed to delete expense' });
       }
 
     default:
-      res.setHeader('Allow', ['GET', 'PUT', 'DELETE']);
+      res.setHeader('Allow', ['GET', 'DELETE']);
       return res.status(405).end(`Method ${method} Not Allowed`);
   }
 } 
