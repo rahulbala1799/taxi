@@ -31,6 +31,10 @@ export default function RideDetails() {
     notes: ''
   })
   
+  // Edit ride state
+  const [showEditForm, setShowEditForm] = useState(false)
+  const [currentRideToEdit, setCurrentRideToEdit] = useState(null)
+  
   const router = useRouter()
 
   useEffect(() => {
@@ -265,6 +269,92 @@ export default function RideDetails() {
       default: return source;
     }
   }
+  
+  // Reset forms function
+  const resetForms = () => {
+    setShowAddForm(false)
+    setShowEditForm(false)
+    setCurrentRideToEdit(null)
+    setError('')
+  }
+  
+  const handleEditRide = (ride) => {
+    console.log('Editing ride:', ride)
+    setCurrentRideToEdit(ride)
+    
+    // Populate the form with the ride data
+    const editForm = {
+      distance: ride.distance.toString(),
+      duration: ride.duration ? ride.duration.toString() : '',
+      fare: ride.fare.toString(),
+      tips: ride.tips ? ride.tips.toString() : '',
+      tollAmount: ride.tollAmount ? ride.tollAmount.toString() : '',
+      rideSource: ride.rideSource,
+      shiftId: ride.shiftId || '',
+      notes: ride.notes || ''
+    }
+    
+    setRideForm(editForm)
+    setShowEditForm(true)
+    setShowAddForm(false)
+  }
+  
+  const handleEditSubmit = async (e) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    setError('')
+    
+    try {
+      console.log('Submitting edit for ride:', currentRideToEdit.id)
+      
+      if (!currentRideToEdit || !currentRideToEdit.id) {
+        throw new Error('No ride selected for editing')
+      }
+      
+      if (!rideForm.distance || !rideForm.fare) {
+        throw new Error('Please fill in all required fields')
+      }
+      
+      // Prepare form data with empty values converted to zeros
+      const formData = {
+        distance: rideForm.distance,
+        fare: rideForm.fare,
+        tips: rideForm.tips === '' ? '0' : rideForm.tips,
+        tollAmount: rideForm.tollAmount === '' ? '0' : rideForm.tollAmount,
+        duration: rideForm.duration === '' ? '0' : rideForm.duration,
+        rideSource: rideForm.rideSource,
+        shiftId: rideForm.shiftId || null,
+        notes: rideForm.notes || ''
+      }
+      
+      console.log('Sending update data:', formData)
+      
+      const res = await fetch(`/api/rides/${currentRideToEdit.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+      
+      console.log('Response status:', res.status)
+      const data = await res.json()
+      console.log('Response data:', data)
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update ride')
+      }
+      
+      // Reset form and refresh rides
+      resetForms()
+      fetchRides(user.id)
+    } catch (err) {
+      console.error('Error updating ride:', err)
+      setError(err.message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -497,10 +587,7 @@ export default function RideDetails() {
               <div className="flex justify-center space-x-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowAddForm(false)
-                    setError('')
-                  }}
+                  onClick={() => resetForms()}
                   className="bg-gray-200 text-gray-700 px-5 py-3 rounded-md text-base font-medium"
                   disabled={isSubmitting}
                 >
@@ -512,6 +599,181 @@ export default function RideDetails() {
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? 'Adding...' : 'Add Ride'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+        
+        {/* Edit Ride Form */}
+        {showEditForm && currentRideToEdit && (
+          <div className="bg-white rounded-lg shadow-md p-4 mb-6 border border-gray-200">
+            <h2 className="text-lg font-bold text-black mb-4">Edit Ride</h2>
+            
+            {error && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                {error}
+              </div>
+            )}
+            
+            <div className="mb-4 p-2 bg-gray-100 rounded text-xs">
+              <div className="font-medium">Editing ride from {formatDate(currentRideToEdit.date)}</div>
+              <div className="mt-1">Ride ID: {currentRideToEdit.id}</div>
+            </div>
+            
+            <form onSubmit={handleEditSubmit}>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="distance">
+                    Distance (km)*
+                  </label>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.1"
+                    id="distance"
+                    name="distance"
+                    value={rideForm.distance}
+                    onChange={handleRideChange}
+                    className="w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600 text-base"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="duration">
+                    Duration (min)
+                  </label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    id="duration"
+                    name="duration"
+                    value={rideForm.duration}
+                    onChange={handleRideChange}
+                    className="w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600 text-base"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="fare">
+                    Fare (€)*
+                  </label>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    id="fare"
+                    name="fare"
+                    value={rideForm.fare}
+                    onChange={handleRideChange}
+                    className="w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600 text-base"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="tips">
+                    Tips (€)
+                  </label>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    id="tips"
+                    name="tips"
+                    value={rideForm.tips}
+                    onChange={handleRideChange}
+                    className="w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600 text-base"
+                  />
+                </div>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="tollAmount">
+                  Toll Amount (€)
+                </label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  id="tollAmount"
+                  name="tollAmount"
+                  value={rideForm.tollAmount}
+                  onChange={handleRideChange}
+                  className="w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600 text-base"
+                />
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="rideSource">
+                  Ride Source
+                </label>
+                <select
+                  id="rideSource"
+                  name="rideSource"
+                  value={rideForm.rideSource}
+                  onChange={handleRideChange}
+                  className="w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600 text-base"
+                >
+                  <option value="WALK_IN">Walk-In</option>
+                  <option value="UBER">Uber</option>
+                  <option value="BOLT">Bolt</option>
+                  <option value="FREE_NOW">FreeNow</option>
+                  <option value="HOLA_TAXI">Hola Taxi</option>
+                </select>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="shiftId">
+                  Assign to Shift
+                </label>
+                <select
+                  id="shiftId"
+                  name="shiftId"
+                  value={rideForm.shiftId}
+                  onChange={handleRideChange}
+                  className="w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600 text-base"
+                >
+                  <option value="">-- Not Assigned --</option>
+                  {shifts.map(shift => (
+                    <option key={shift.id} value={shift.id}>
+                      {formatDate(shift.date)} - {shift.vehicle?.make} {shift.vehicle?.model}
+                      {shift.status === 'ACTIVE' ? ' (Active)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="notes">
+                  Notes
+                </label>
+                <textarea
+                  id="notes"
+                  name="notes"
+                  value={rideForm.notes}
+                  onChange={handleRideChange}
+                  className="w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600 text-base"
+                  rows="2"
+                ></textarea>
+              </div>
+              
+              <div className="flex justify-center space-x-3">
+                <button
+                  type="button"
+                  onClick={() => resetForms()}
+                  className="bg-gray-200 text-gray-700 px-5 py-3 rounded-md text-base font-medium"
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-blue-600 text-white px-5 py-3 rounded-md text-base font-medium"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Updating...' : 'Update Ride'}
                 </button>
               </div>
             </form>
@@ -586,11 +848,23 @@ export default function RideDetails() {
                       </div>
                     )}
                     
-                    {ride.tollAmount > 0 && (
-                      <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                        Toll: {formatCurrency(ride.tollAmount)}
-                      </div>
-                    )}
+                    <div className="flex space-x-2">
+                      {ride.tollAmount > 0 && (
+                        <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                          Toll: {formatCurrency(ride.tollAmount)}
+                        </div>
+                      )}
+                      <button
+                        onClick={() => handleEditRide(ride)}
+                        className="text-xs bg-blue-600 text-white px-2 py-1 rounded-full flex items-center"
+                        aria-label="Edit ride"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Edit
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
