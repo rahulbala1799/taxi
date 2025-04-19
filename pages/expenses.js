@@ -9,20 +9,6 @@ import OtherExpenseManager from '../components/OtherExpenseManager'
 import { useAuth } from '../lib/auth'
 import Layout from '../components/Layout'
 
-// Helper component for Other expenses
-const OtherExpenseManager = ({ vehicles }) => {
-  return (
-    <div className="bg-white shadow-md rounded-lg p-6 my-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Other Expenses</h2>
-      </div>
-      <div className="text-center py-6 border border-dashed border-gray-300 rounded-lg">
-        <p className="text-gray-500">Other expense management coming soon.</p>
-      </div>
-    </div>
-  )
-}
-
 export default function ExpensesPage() {
   const { user } = useAuth()
   const [vehicles, setVehicles] = useState([])
