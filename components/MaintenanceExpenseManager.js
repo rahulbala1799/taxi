@@ -208,15 +208,23 @@ export default function MaintenanceExpenseManager({ vehicles }) {
           </div>
         )}
 
-        <div>
+        {/* Expense List Section */}
+        <div className={`${showAddForm ? 'mt-6' : ''}`}> {/* Add margin top if form is shown */} 
           <h3 className="text-lg font-bold mb-4 text-gray-800">Recent Maintenance</h3>
           
           {loading ? (
-             <div className="py-8 text-center">{/* Loading spinner */}</div>
+             <div className="py-8 text-center"> {/* Loading spinner */}
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-yellow-600 mx-auto mb-4"></div>
+                <p className="text-gray-500">Loading maintenance...</p>
+             </div>
           ) : maintenanceExpenses.length === 0 ? (
             <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-300">
               {/* Empty state message */} 
-               <p>No maintenance expenses recorded.</p>
+               <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                </svg>
+               <p className="mb-1 text-gray-700 font-medium">No maintenance expenses recorded</p>
+               <p className="text-sm text-gray-500">Add your first maintenance record</p>
             </div>
           ) : (
             <div className="space-y-4">
