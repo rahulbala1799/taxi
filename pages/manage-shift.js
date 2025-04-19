@@ -314,6 +314,7 @@ export default function ManageShift() {
   }
   
   const handleEditShift = (shift) => {
+    console.log('Opening edit form for shift:', shift);
     setCurrentShiftToEdit(shift)
     setShowEditForm(true)
   }
@@ -381,6 +382,8 @@ export default function ManageShift() {
     setIsSubmitting(true)
     setError('')
     
+    console.log('Edit shift form submitted', { currentShiftToEdit });
+    
     try {
       if (!currentShiftToEdit) {
         throw new Error('No shift selected for editing')
@@ -389,6 +392,8 @@ export default function ManageShift() {
       // Get form data from the event
       const formData = new FormData(e.target)
       const data = Object.fromEntries(formData)
+      
+      console.log('Form data collected:', data);
       
       // Prepare update data
       const updateData = {
@@ -432,6 +437,9 @@ export default function ManageShift() {
         updateData.endTime = newEndTime
       }
       
+      console.log('Prepared update data:', updateData);
+      console.log('API request URL:', `/api/shifts/${currentShiftToEdit.id}`);
+      
       // Update the shift
       const res = await fetch(`/api/shifts/${currentShiftToEdit.id}`, {
         method: 'PUT',
@@ -439,21 +447,24 @@ export default function ManageShift() {
         body: JSON.stringify(updateData)
       })
       
-      const updatedShift = await res.json()
+      console.log('API response status:', res.status);
+      const responseData = await res.json()
+      console.log('API response data:', responseData);
       
       if (!res.ok) {
-        throw new Error(updatedShift.error || 'Failed to update shift')
+        throw new Error(responseData.error || 'Failed to update shift')
       }
       
       // Update shifts list
       setShifts(shifts.map(shift => 
-        shift.id === updatedShift.id ? { ...shift, ...updatedShift } : shift
+        shift.id === responseData.id ? { ...shift, ...responseData } : shift
       ))
       
       setShowEditForm(false)
       setCurrentShiftToEdit(null)
       
     } catch (err) {
+      console.error('Error updating shift:', err);
       setError(err.message)
     } finally {
       setIsSubmitting(false)
@@ -862,6 +873,23 @@ export default function ManageShift() {
               </div>
             )}
             
+            {/* Debug Info Section */}
+            <div className="mb-4 p-2 bg-gray-100 rounded text-xs overflow-auto max-h-40">
+              <details>
+                <summary className="font-medium cursor-pointer">Debug Info</summary>
+                <pre className="mt-2 whitespace-pre-wrap">
+                  {JSON.stringify({
+                    shiftId: currentShiftToEdit.id,
+                    date: currentShiftToEdit.date,
+                    startTime: currentShiftToEdit.startTime,
+                    endTime: currentShiftToEdit.endTime,
+                    status: currentShiftToEdit.status,
+                    vehicleId: currentShiftToEdit.vehicleId
+                  }, null, 2)}
+                </pre>
+              </details>
+            </div>
+            
             <form onSubmit={handleEditSubmit}>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="date">
@@ -916,14 +944,16 @@ export default function ManageShift() {
                 ></textarea>
               </div>
               
-              <div className="flex justify-end space-x-2 mt-6">
+              <div className="flex justify-center space-x-4 mt-6">
                 <button
                   type="button"
                   onClick={() => {
-                    setShowEditForm(false)
-                    setCurrentShiftToEdit(null)
+                    console.log('Edit form cancelled');
+                    setShowEditForm(false);
+                    setCurrentShiftToEdit(null);
                   }}
-                  className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium"
+                  className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm font-medium"
+                  disabled={isSubmitting}
                 >
                   Cancel
                 </button>
@@ -931,6 +961,7 @@ export default function ManageShift() {
                   type="submit"
                   className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium"
                   disabled={isSubmitting}
+                  onClick={() => console.log('Submit button clicked')}
                 >
                   {isSubmitting ? 'Saving...' : 'Save Changes'}
                 </button>

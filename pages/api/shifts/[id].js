@@ -62,6 +62,9 @@ export default async function handler(req, res) {
           startTime
         } = req.body;
 
+        console.log('PUT /api/shifts/[id] - Request body:', req.body);
+        console.log('Shift ID:', id);
+
         // Get the current shift
         const currentShift = await prisma.shift.findUnique({
           where: { id },
@@ -71,18 +74,29 @@ export default async function handler(req, res) {
         });
         
         if (!currentShift) {
+          console.error('Shift not found with ID:', id);
           return res.status(404).json({ error: 'Shift not found' });
         }
+
+        console.log('Current shift found:', {
+          id: currentShift.id,
+          vehicleId: currentShift.vehicleId,
+          driverId: currentShift.driverId,
+          status: currentShift.status,
+          date: currentShift.date
+        });
 
         // If ending a shift (completing it)
         if (status === 'COMPLETED') {
           // Check if end time is provided
           if (!endTime) {
+            console.error('Missing endTime for COMPLETED status');
             return res.status(400).json({ error: 'End time is required to complete a shift' });
           }
           
           // For electric vehicles, end range is required
           if (currentShift.vehicle.fuelType === 'Electric' && !endRange && endRange !== 0) {
+            console.error('Missing endRange for Electric vehicle');
             return res.status(400).json({ error: 'Ending range is required for electric vehicles' });
           }
         }
@@ -143,49 +157,13 @@ export default async function handler(req, res) {
           updateData.notes = notes;
         }
 
-        console.log('Updating shift with data:', updateData);
+        console.log('Updating shift with data:', JSON.stringify(updateData, null, 2));
 
         // Update the shift
-        const updatedShift = await prisma.shift.update({
-          where: { id },
-          data: updateData,
-          include: {
-            vehicle: {
-              select: {
-                id: true,
-                make: true,
-                model: true,
-                licensePlate: true,
-                fuelType: true
-              }
-            },
-            rides: {
-              select: {
-                id: true,
-                fare: true,
-                tips: true,
-                totalEarned: true,
-                date: true
-              }
-            }
-          }
-        });
-        
-        // If date was updated, update all associated rides to have the same date
-        if (date && updatedShift.rides && updatedShift.rides.length > 0) {
-          console.log(`Updating dates for ${updatedShift.rides.length} rides to match shift date`);
-          
-          // Update all associated rides to have the new date
-          await Promise.all(updatedShift.rides.map(ride => 
-            prisma.ride.update({
-              where: { id: ride.id },
-              data: { date: new Date(date) }
-            })
-          ));
-          
-          // Refresh the shift data to include updated rides
-          const refreshedShift = await prisma.shift.findUnique({
+        try {
+          const updatedShift = await prisma.shift.update({
             where: { id },
+            data: updateData,
             include: {
               vehicle: {
                 select: {
@@ -208,37 +186,90 @@ export default async function handler(req, res) {
             }
           });
           
-          if (refreshedShift) {
-            // Calculate total earnings for the shift
-            const totalEarnings = refreshedShift.rides.reduce((sum, ride) => {
-              return sum + (parseFloat(ride.totalEarned) || 0);
-            }, 0);
+          console.log('Shift updated successfully:', updatedShift.id);
+          
+          // If date was updated, update all associated rides to have the same date
+          if (date && updatedShift.rides && updatedShift.rides.length > 0) {
+            console.log(`Updating dates for ${updatedShift.rides.length} rides to match shift date`);
             
-            // Add total earnings to the response
-            const refreshedShiftWithEarnings = {
-              ...refreshedShift,
-              totalEarnings
-            };
+            // Update all associated rides to have the new date
+            await Promise.all(updatedShift.rides.map(ride => 
+              prisma.ride.update({
+                where: { id: ride.id },
+                data: { date: new Date(date) }
+              })
+            ));
             
-            return res.status(200).json(refreshedShiftWithEarnings);
+            // Refresh the shift data to include updated rides
+            const refreshedShift = await prisma.shift.findUnique({
+              where: { id },
+              include: {
+                vehicle: {
+                  select: {
+                    id: true,
+                    make: true,
+                    model: true,
+                    licensePlate: true,
+                    fuelType: true
+                  }
+                },
+                rides: {
+                  select: {
+                    id: true,
+                    fare: true,
+                    tips: true,
+                    totalEarned: true,
+                    date: true
+                  }
+                }
+              }
+            });
+            
+            if (refreshedShift) {
+              // Calculate total earnings for the shift
+              const totalEarnings = refreshedShift.rides.reduce((sum, ride) => {
+                return sum + (parseFloat(ride.totalEarned) || 0);
+              }, 0);
+              
+              // Add total earnings to the response
+              const refreshedShiftWithEarnings = {
+                ...refreshedShift,
+                totalEarnings
+              };
+              
+              console.log('Returning refreshed shift with updated ride dates');
+              return res.status(200).json(refreshedShiftWithEarnings);
+            }
           }
+          
+          // Calculate total earnings for the shift
+          const totalEarnings = updatedShift.rides.reduce((sum, ride) => {
+            return sum + (parseFloat(ride.totalEarned) || 0);
+          }, 0);
+
+          // Add total earnings to the response
+          const updatedShiftWithEarnings = {
+            ...updatedShift,
+            totalEarnings
+          };
+
+          console.log('Returning updated shift');
+          return res.status(200).json(updatedShiftWithEarnings);
+        } catch (prismaError) {
+          console.error('Prisma error updating shift:', prismaError);
+          return res.status(500).json({ 
+            error: 'Database error updating shift',
+            details: prismaError.message,
+            code: prismaError.code
+          });
         }
-        
-        // Calculate total earnings for the shift
-        const totalEarnings = updatedShift.rides.reduce((sum, ride) => {
-          return sum + (parseFloat(ride.totalEarned) || 0);
-        }, 0);
-
-        // Add total earnings to the response
-        const updatedShiftWithEarnings = {
-          ...updatedShift,
-          totalEarnings
-        };
-
-        return res.status(200).json(updatedShiftWithEarnings);
       } catch (error) {
         console.error('Error updating shift:', error);
-        return res.status(500).json({ error: 'Failed to update shift' });
+        return res.status(500).json({ 
+          error: 'Failed to update shift',
+          details: error.message,
+          stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
       }
 
     case 'DELETE':
