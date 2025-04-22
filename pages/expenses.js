@@ -6,9 +6,10 @@ import FuelExpenseManager from '../components/FuelExpenseManager'
 import MaintenanceExpenseManager from '../components/MaintenanceExpenseManager'
 import InsuranceExpenseManager from '../components/InsuranceExpenseManager'
 import OtherExpenseManager from '../components/OtherExpenseManager'
+import { useAuth } from '../lib/auth'
 
 export default function ExpensesPage() {
-  const [user, setUser] = useState(null)
+  const { user } = useAuth()
   const [vehicles, setVehicles] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -17,27 +18,16 @@ export default function ExpensesPage() {
 
   useEffect(() => {
     // Check if user is logged in
-    const userData = localStorage.getItem('user')
-    const token = localStorage.getItem('token')
-
-    if (!userData || !token) {
+    if (!user) {
       router.push('/login')
       return
     }
 
-    try {
-      const parsedUser = JSON.parse(userData)
-      setUser(parsedUser)
-      
-      // Load data when user is available
-      if (parsedUser && parsedUser.id) {
-        fetchVehicles(parsedUser.id)
-      }
-    } catch (err) {
-      console.error('Error parsing user data', err)
-      router.push('/login')
+    // Load data when user is available
+    if (user && user.id) {
+      fetchVehicles(user.id)
     }
-  }, [router])
+  }, [user, router])
   
   const fetchVehicles = async (userId) => {
     try {
@@ -76,10 +66,14 @@ export default function ExpensesPage() {
     router.push('/')
   }
 
+  // Render loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-2xl font-bold text-red-600">Loading...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+          <div className="text-xl font-bold text-red-600">Loading...</div>
+        </div>
       </div>
     )
   }
@@ -132,10 +126,10 @@ export default function ExpensesPage() {
         ) : (
           <div className="space-y-6">
             {/* Main expense managers */}
-            <FuelExpenseManager vehicles={vehicles} />
-            <MaintenanceExpenseManager vehicles={vehicles} />
-            <InsuranceExpenseManager vehicles={vehicles} />
-            <OtherExpenseManager vehicles={vehicles} />
+            {vehicles && <FuelExpenseManager vehicles={vehicles} />}
+            {vehicles && <MaintenanceExpenseManager vehicles={vehicles} />}
+            {vehicles && <InsuranceExpenseManager vehicles={vehicles} />}
+            {vehicles && <OtherExpenseManager vehicles={vehicles} />}
           </div>
         )}
       </main>
