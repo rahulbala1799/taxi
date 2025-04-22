@@ -13,10 +13,19 @@ export default function ExpensesPage() {
   const [vehicles, setVehicles] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [isClient, setIsClient] = useState(false)
   
   const router = useRouter()
+  
+  // Handle client-side rendering only
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   useEffect(() => {
+    // Only proceed on client-side
+    if (!isClient) return;
+    
     // Check if user is logged in
     if (!user) {
       router.push('/login')
@@ -27,7 +36,7 @@ export default function ExpensesPage() {
     if (user && user.id) {
       fetchVehicles(user.id)
     }
-  }, [user, router])
+  }, [user, router, isClient])
   
   const fetchVehicles = async (userId) => {
     try {
@@ -66,6 +75,11 @@ export default function ExpensesPage() {
     router.push('/')
   }
 
+  // Prevent rendering during server-side to avoid hydration mismatch
+  if (!isClient) {
+    return <div className="min-h-screen bg-white flex items-center justify-center">Loading...</div>;
+  }
+  
   // Render loading state
   if (loading) {
     return (
@@ -110,12 +124,7 @@ export default function ExpensesPage() {
           </div>
         )}
         
-        {loading ? (
-          <div className="text-center py-10">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
-            <p>Loading your vehicles and expenses...</p>
-          </div>
-        ) : vehicles.length === 0 ? (
+        {vehicles.length === 0 ? (
           <div className="bg-yellow-50 p-6 rounded-lg mb-6 border border-yellow-200">
             <h2 className="text-xl font-bold mb-2">You need to add a vehicle first</h2>
             <p className="mb-4">Please add a vehicle to start tracking your expenses.</p>
@@ -125,11 +134,11 @@ export default function ExpensesPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Main expense managers */}
-            {vehicles && <FuelExpenseManager vehicles={vehicles} />}
-            {vehicles && <MaintenanceExpenseManager vehicles={vehicles} />}
-            {vehicles && <InsuranceExpenseManager vehicles={vehicles} />}
-            {vehicles && <OtherExpenseManager vehicles={vehicles} />}
+            {/* Main expense managers - always provide a valid array to components */}
+            <FuelExpenseManager vehicles={vehicles || []} />
+            <MaintenanceExpenseManager vehicles={vehicles || []} />
+            <InsuranceExpenseManager vehicles={vehicles || []} />
+            <OtherExpenseManager vehicles={vehicles || []} />
           </div>
         )}
       </main>
