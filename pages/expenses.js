@@ -5,8 +5,8 @@ export default function ExpensesRedirectPage() {
   const router = useRouter()
   
   useEffect(() => {
-    // Redirect to the new expenses page
-    router.replace('/expenses-new')
+    // Redirect to the simple expenses page
+    router.replace('/expenses-simple')
   }, [router])
   
   // Return null to avoid rendering anything that might cause errors
