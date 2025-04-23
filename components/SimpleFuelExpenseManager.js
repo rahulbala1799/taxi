@@ -278,7 +278,7 @@ export default function SimpleFuelExpenseManager({ vehicles }) {
     }
   }
   
-  // Render tabs
+  // Render tabs - simplified
   const renderTabs = () => {
     DEBUG.log('SimpleFuelExpenseManager', 'RENDER_TABS_START', { activeTab });
     
@@ -315,9 +315,9 @@ export default function SimpleFuelExpenseManager({ vehicles }) {
     return tabsElement;
   }
   
-  // Render add form with dynamic fields based on vehicle fuel type
+  // Simplified Add Form
   const renderAddForm = () => {
-    const isFuelElectric = selectedVehicle?.fuelType === 'Electric'
+    const isFuelElectric = selectedVehicle?.fuelType === 'Electric';
     
     return (
       <div className="bg-white p-4 rounded-lg border shadow-sm mb-4">
@@ -325,16 +325,14 @@ export default function SimpleFuelExpenseManager({ vehicles }) {
           <h3 className="text-lg font-bold">Add Fuel Expense</h3>
           <button 
             onClick={() => setShowAddForm(false)}
-            className="text-gray-500"
+            className="text-gray-500 px-2 py-1"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
+            ✕
           </button>
         </div>
         
         <form onSubmit={handleSubmit}>
-          {/* Vehicle Selection */}
+          {/* Form content */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Vehicle *
@@ -355,7 +353,7 @@ export default function SimpleFuelExpenseManager({ vehicles }) {
             </select>
           </div>
           
-          {/* Date input */}
+          {/* More form fields */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Date *
@@ -370,7 +368,6 @@ export default function SimpleFuelExpenseManager({ vehicles }) {
             />
           </div>
           
-          {/* Amount */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Amount (€) *
@@ -385,101 +382,6 @@ export default function SimpleFuelExpenseManager({ vehicles }) {
               step="0.01"
               min="0"
               required
-            />
-          </div>
-          
-          {/* Dynamic fields based on fuel type */}
-          {isFuelElectric ? (
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Charge Time (minutes)
-              </label>
-              <input
-                type="number"
-                name="chargeTime"
-                value={formData.chargeTime}
-                onChange={handleInputChange}
-                className="w-full p-2 border rounded-md"
-                placeholder="0"
-                min="0"
-              />
-            </div>
-          ) : (
-            <>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Fuel Type
-                </label>
-                <select
-                  name="fuelType"
-                  value={formData.fuelType}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border rounded-md"
-                >
-                  <option value="Petrol">Petrol</option>
-                  <option value="Diesel">Diesel</option>
-                  <option value="Hybrid">Hybrid</option>
-                </select>
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Quantity (Liters)
-                </label>
-                <input
-                  type="number"
-                  name="quantity"
-                  value={formData.quantity}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border rounded-md"
-                  placeholder="0"
-                  step="0.01"
-                  min="0"
-                />
-              </div>
-              
-              <div className="mb-4">
-                <label className="flex items-center text-sm font-medium text-gray-700">
-                  <input
-                    type="checkbox"
-                    name="fullTank"
-                    checked={formData.fullTank}
-                    onChange={handleInputChange}
-                    className="mr-2"
-                  />
-                  Full Tank
-                </label>
-              </div>
-            </>
-          )}
-          
-          {/* Odometer Reading - common for all fuel types */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Odometer Reading (km)
-            </label>
-            <input
-              type="number"
-              name="odometerReading"
-              value={formData.odometerReading}
-              onChange={handleInputChange}
-              className="w-full p-2 border rounded-md"
-              placeholder="0"
-              min="0"
-            />
-          </div>
-          
-          {/* Notes */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Notes
-            </label>
-            <textarea
-              name="notes"
-              value={formData.notes}
-              onChange={handleInputChange}
-              className="w-full p-2 border rounded-md"
-              rows="2"
             />
           </div>
           
@@ -503,17 +405,17 @@ export default function SimpleFuelExpenseManager({ vehicles }) {
           </div>
         </form>
       </div>
-    )
+    );
   }
   
-  // Render expense cards
+  // Simplified expense cards
   const renderExpenseCards = () => {
     if (expenses.length === 0) {
       return (
         <div className="text-center py-6 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-          </svg>
+          <div className="h-12 w-12 mx-auto text-gray-400 mb-3 flex items-center justify-center">
+            <span className="text-2xl">📁</span>
+          </div>
           <p className="text-gray-500 mb-1">No fuel expenses found</p>
           <button 
             onClick={() => setShowAddForm(true)}
@@ -522,7 +424,7 @@ export default function SimpleFuelExpenseManager({ vehicles }) {
             Add your first expense
           </button>
         </div>
-      )
+      );
     }
     
     return (
@@ -535,10 +437,11 @@ export default function SimpleFuelExpenseManager({ vehicles }) {
                 <div className="text-sm text-gray-500">{formatDate(expense.date)}</div>
               </div>
               <div className="flex space-x-2">
-                <button className="text-gray-500" onClick={() => handleDelete(expense.id)}>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
+                <button 
+                  className="text-gray-500 px-2 py-1" 
+                  onClick={() => handleDelete(expense.id)}
+                >
+                  🗑️
                 </button>
               </div>
             </div>
@@ -550,51 +453,24 @@ export default function SimpleFuelExpenseManager({ vehicles }) {
             </div>
             
             <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-              {expense.fuelType === 'Electric' ? (
-                <>
-                  <div>
-                    <span className="text-gray-500">Fuel Type:</span> Electric
-                  </div>
-                  {expense.chargeTime && (
-                    <div>
-                      <span className="text-gray-500">Charge Time:</span> {expense.chargeTime} min
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  <div>
-                    <span className="text-gray-500">Fuel Type:</span> {expense.fuelType}
-                  </div>
-                  {expense.quantity && (
-                    <div>
-                      <span className="text-gray-500">Quantity:</span> {expense.quantity}L
-                    </div>
-                  )}
-                  {typeof expense.fullTank !== 'undefined' && (
-                    <div>
-                      <span className="text-gray-500">Full Tank:</span> {expense.fullTank ? 'Yes' : 'No'}
-                    </div>
-                  )}
-                </>
+              <div>
+                <span className="text-gray-500">Fuel Type:</span> {expense.fuelType || 'N/A'}
+              </div>
+              {expense.quantity && (
+                <div>
+                  <span className="text-gray-500">Quantity:</span> {expense.quantity}L
+                </div>
               )}
-              
               {expense.odometerReading && (
                 <div>
                   <span className="text-gray-500">Odometer:</span> {expense.odometerReading} km
                 </div>
               )}
             </div>
-            
-            {expense.notes && (
-              <div className="mt-3 text-sm">
-                <span className="text-gray-500">Notes:</span> {expense.notes}
-              </div>
-            )}
           </div>
         ))}
       </div>
-    )
+    );
   }
   
   // Debugging pre-render checks
@@ -607,7 +483,7 @@ export default function SimpleFuelExpenseManager({ vehicles }) {
     showAddForm
   });
   
-  // Main component render
+  // Main component render - simplified
   try {
     const componentRender = (
       <div className="bg-white rounded-xl shadow-lg mb-6 overflow-hidden">
@@ -617,14 +493,8 @@ export default function SimpleFuelExpenseManager({ vehicles }) {
             <button
               onClick={() => setShowAddForm(true)}
               className="bg-white text-red-600 py-2 px-4 rounded-full font-medium text-sm shadow-md hover:bg-gray-50 transition-all"
-              aria-label="Add Expense"
             >
-              <div className="flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-                </svg>
-                Add
-              </div>
+              + Add
             </button>
           )}
         </div>
@@ -652,7 +522,7 @@ export default function SimpleFuelExpenseManager({ vehicles }) {
                 DEBUG.log('SimpleFuelExpenseManager', 'RENDERING_LOADING', 'Showing loading state');
                 return (
                   <div className="py-8 text-center">
-                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-red-600 mx-auto mb-4"></div>
+                    <div className="animate-spin border-2 border-red-600 border-t-transparent rounded-full h-10 w-10 mx-auto mb-4"></div>
                     <p className="text-gray-500">Loading expenses...</p>
                   </div>
                 );

@@ -139,46 +139,56 @@ export default function ExpensesSimple() {
   }
 
   // Main render
-  const mainRender = (
-    <Layout>
-      <div className="bg-gray-50 min-h-screen">
-        <div className="container max-w-md mx-auto px-4 py-8">
-          <ErrorBoundary>
-            <h1 className="text-2xl font-bold mb-6 text-gray-800">Vehicle Expenses</h1>
-            
-            {loading ? (
-              <div className="p-8 bg-white rounded-xl shadow-lg flex items-center justify-center">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-red-600"></div>
-                <span className="ml-3 text-gray-600">Loading vehicles...</span>
-              </div>
-            ) : (
-              (() => {
-                DEBUG.log('ExpensesSimple', 'CONDITIONAL_RENDER', { 
-                  vehiclesExist: !!vehicles, 
-                  vehiclesLength: vehicles?.length || 0 
-                });
-                
-                if (vehicles && vehicles.length > 0) {
-                  DEBUG.log('ExpensesSimple', 'RENDERING_MANAGER', { vehicleCount: vehicles.length });
-                  return <SimpleFuelExpenseManager vehicles={vehicles} />;
-                } else {
-                  DEBUG.log('ExpensesSimple', 'RENDERING_EMPTY', 'No vehicles available');
-                  return (
-                    <div className="p-8 bg-white rounded-xl shadow-lg text-center">
-                      <p className="text-gray-600">No vehicles available.</p>
-                    </div>
-                  );
-                }
-              })()
-            )}
-          </ErrorBoundary>
+  try {
+    const mainRender = (
+      <Layout>
+        <div className="bg-gray-50 min-h-screen">
+          <div className="container max-w-md mx-auto px-4 py-8">
+            <ErrorBoundary>
+              <h1 className="text-2xl font-bold mb-6 text-gray-800">Vehicle Expenses</h1>
+              
+              {loading ? (
+                <div className="p-8 bg-white rounded-xl shadow-lg flex items-center justify-center">
+                  <div className="inline-block border-2 border-red-600 border-t-transparent rounded-full h-10 w-10 animate-spin"></div>
+                  <span className="ml-3 text-gray-600">Loading vehicles...</span>
+                </div>
+              ) : (
+                (() => {
+                  DEBUG.log('ExpensesSimple', 'CONDITIONAL_RENDER', { 
+                    vehiclesExist: !!vehicles, 
+                    vehiclesLength: vehicles?.length || 0 
+                  });
+                  
+                  if (vehicles && vehicles.length > 0) {
+                    DEBUG.log('ExpensesSimple', 'RENDERING_MANAGER', { vehicleCount: vehicles.length });
+                    return <SimpleFuelExpenseManager vehicles={vehicles} />;
+                  } else {
+                    DEBUG.log('ExpensesSimple', 'RENDERING_EMPTY', 'No vehicles available');
+                    return (
+                      <div className="p-8 bg-white rounded-xl shadow-lg text-center">
+                        <p className="text-gray-600">No vehicles available.</p>
+                      </div>
+                    );
+                  }
+                })()
+              )}
+            </ErrorBoundary>
+          </div>
+          
+          <MobileNavBar activeItem="expenses" />
         </div>
-        
-        <MobileNavBar activeItem="expenses" />
+      </Layout>
+    );
+    
+    DEBUG.log('ExpensesSimple', 'MAIN_RENDER', { isNull: mainRender === null, isUndefined: mainRender === undefined });
+    return DEBUG.render('ExpensesSimple', mainRender);
+  } catch (renderError) {
+    DEBUG.error('ExpensesSimple', 'MAIN_RENDER_ERROR', renderError);
+    return DEBUG.render('ExpensesSimple', (
+      <div className="p-4">
+        <h2 className="text-red-600">Render Error</h2>
+        <p>{renderError.message}</p>
       </div>
-    </Layout>
-  );
-  
-  DEBUG.log('ExpensesSimple', 'MAIN_RENDER', { isNull: mainRender === null, isUndefined: mainRender === undefined });
-  return DEBUG.render('ExpensesSimple', mainRender);
+    ));
+  }
 } 
