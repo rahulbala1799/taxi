@@ -1,13 +1,44 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 
-const MobileNavBar = () => {
+const MobileNavBar = ({ activeItem }) => {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+  
+  // Only run on client side
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   
   const isActive = (path) => {
-    return router.pathname === path ? 'text-blue-500' : 'text-gray-500';
+    if (!mounted) return '';
+    
+    // First check the explicit activeItem prop
+    if (activeItem) {
+      return activeItem === path.replace('/', '') ? 'text-blue-500' : 'text-gray-500';
+    }
+    
+    // Fall back to router pathname
+    return router?.pathname === path ? 'text-blue-500' : 'text-gray-500';
   };
+
+  // During SSR or before mount, return a placeholder
+  if (!mounted) {
+    return (
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-3 px-4 md:hidden">
+        <div className="flex justify-around items-center">
+          {/* Empty placeholders with same dimensions */}
+          {[1, 2, 3, 4].map(item => (
+            <div key={item} className="flex flex-col items-center text-gray-300">
+              <div className="h-6 w-6"></div>
+              <span className="text-xs mt-1 opacity-0">Placeholder</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-3 px-4 md:hidden">
