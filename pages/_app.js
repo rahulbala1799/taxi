@@ -10,6 +10,15 @@ function MyApp({ Component, pageProps }) {
     setMounted(true)
   }, [])
 
+  // Safety wrapper to ensure AuthProvider is only used on client side
+  const SafeHydrate = ({ children }) => {
+    return (
+      <div suppressHydrationWarning>
+        {typeof window === 'undefined' ? null : children}
+      </div>
+    )
+  }
+
   // Prevent flash during hydration
   if (!mounted) {
     return (
@@ -25,9 +34,11 @@ function MyApp({ Component, pageProps }) {
   }
 
   return (
-    <AuthProvider>
-      <Component {...pageProps} />
-    </AuthProvider>
+    <SafeHydrate>
+      <AuthProvider>
+        <Component {...pageProps} />
+      </AuthProvider>
+    </SafeHydrate>
   )
 }
 

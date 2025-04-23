@@ -22,7 +22,7 @@ function classNames(...classes) {
 }
 
 const FuelExpenseManager = ({ vehicles = [] }) => {
-  const { user } = useAuth()
+  const { user = null } = useAuth() || {}
   const [activeTab, setActiveTab] = useState(0)
   const [expenses, setExpenses] = useState([])
   const [newExpense, setNewExpense] = useState({
